@@ -4,6 +4,8 @@ import { inlineWorkerPlugin } from "@aidenlx/esbuild-plugin-inline-worker";
 await build({
   entryPoints: ["src/main.ts"],
   bundle: true,
+  minify: false,
+  sourcemap: true,
   plugins: [
     inlineWorkerPlugin({
       watch: true,
@@ -17,7 +19,6 @@ await build({
   outfile: "dist/main.user.js",
   format: "iife",
   target: "esnext",
-  sourcemap: true,
 });
 
 console.log(new Date(), "+ Build complete");

@@ -66,7 +66,6 @@ declare const navigator: NavigatorWithGPU;
       document.head.appendChild(script);
     }
   } else if (transformersLibLoaded && window.transformers) {
-    window.transformers.env.allowLocalModels = false;
     window.transformers.env.backends.onnx.logLevel = "info";
   }
 

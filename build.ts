@@ -1,5 +1,6 @@
 import { build } from "esbuild";
 import { inlineWorkerPlugin } from "@aidenlx/esbuild-plugin-inline-worker";
+import inlineImportPlugin from "esbuild-plugin-inline-import";
 
 await build({
   entryPoints: ["src/main.ts"],
@@ -7,6 +8,7 @@ await build({
   minify: false,
   sourcemap: true,
   plugins: [
+    inlineImportPlugin(),
     inlineWorkerPlugin({
       watch: true,
       buildOptions: async (ctx, resolve) => {

@@ -1,0 +1,131 @@
+.sv-wrap {
+  width: 0;
+  height: 24px;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  margin-right: 2px;
+  border-radius: 4px;
+  vertical-align: middle;
+  display: inline-block;
+  position: relative;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 10px,
+    black calc(100% - 10px),
+    transparent 100%
+  );
+}
+.mic-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  position: relative;
+  color: #888;
+}
+.mic-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #555;
+}
+.mic-btn.active {
+  color: #e66;
+  background: rgba(255, 100, 100, 0.1);
+}
+.mic-btn.transcribing {
+  color: #0cf;
+  background: rgba(0, 200, 255, 0.1);
+}
+.mic-btn.disabled {
+  cursor: not-allowed;
+  color: #bbb;
+  background: transparent !important;
+}
+@keyframes sv-spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mic-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #0cf;
+  border-radius: 50%;
+  animation: sv-spin 1s linear infinite;
+}
+.mic-btn.disabled .mic-spinner {
+  border-top-color: #ccc;
+}
+.mic-btn.transcribing .mic-spinner {
+  border-top-color: #0cf;
+}
+.mic-btn .status-tooltip {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 3px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 10px;
+}
+.mic-btn .status-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+.mic-btn:hover .status-tooltip,
+.mic-btn.disabled .status-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+/* Styles for the cancel button - mimicking mic-btn but red */
+.sv-cancel-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: #e66;
+  margin-right: 2px;
+}
+.sv-cancel-btn:hover {
+  background: rgba(255, 100, 100, 0.1);
+  color: #c33; /* Darker red on hover */
+}
+/* Styles for transcribing state controls */
+.transcribe-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.stop-btn-style {
+  color: #e66;
+  cursor: pointer;
+  font-size: 10px;
+}

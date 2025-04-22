@@ -30,26 +30,23 @@ interface GPUCommandBuffer {}
 
 declare const navigator: NavigatorWithGPU;
 
-// --- Worker Code (Restored as template literal) ---
-
 // --- Global ASR Status Management ---
-export let globalAsrStatus: AsrStatusUpdateDetail["status"] = "initializing";
-export let globalAsrMessage: string = "Initializing ASR...";
+export let globalAsrStatus: AsrStatusUpdateDetail["status"] | "uninitialized" =
+  "uninitialized";
+export let globalAsrMessage: string = "Click to initialize";
 
 // --- Worker Instance Management ---
 let worker: Worker | null = null;
 let workerReady: boolean = false;
 let workerLoading: boolean = false;
 let workerError: string | null = null;
-let currentWorkerUrl: string | null = null; // To manage blob URL cleanup (restored)
+let currentWorkerUrl: string | null = null;
 
 /**
  * Dispatches a global ASR status update event.
- * @param status The new status.
- * @param message Optional message associated with the status.
  */
 function dispatchStatusUpdate(
-  status: AsrStatusUpdateDetail["status"],
+  status: AsrStatusUpdateDetail["status"] | "uninitialized",
   message?: string
 ) {
   globalAsrStatus = status;
@@ -59,31 +56,49 @@ function dispatchStatusUpdate(
       ? "ASR Ready"
       : status === "error"
       ? `ASR Error: ${workerError || "Unknown"}`
-      : "Loading ASR...");
+      : status === "loading"
+      ? "Loading ASR model..."
+      : status === "initializing"
+      ? "Initializing ASR..."
+      : status === "uninitialized"
+      ? "Click mic to initialize"
+      : "ASR status unknown");
   console.log(`ASR Status: ${status}`, message ? `(${message})` : "");
+  const detail: AsrStatusUpdateDetail = {
+    status: status === "uninitialized" ? "initializing" : status,
+    message: globalAsrMessage,
+  };
   document.dispatchEvent(
-    new CustomEvent<AsrStatusUpdateDetail>("asrStatusUpdate", {
-      detail: { status, message: globalAsrMessage },
-    })
+    new CustomEvent<AsrStatusUpdateDetail>("asrStatusUpdate", { detail })
   );
 }
 
 /**
  * Creates or returns the existing ASR worker instance.
+ * Should only be called internally by triggerASRInitialization.
  */
-export function getOrCreateWorker(): Worker | null {
+function getOrCreateWorker(): Worker | null {
   console.log("[ASR Manager] getOrCreateWorker called.");
   if (worker) {
-    console.log("[ASR Manager] Returning existing worker.");
+    console.warn(
+      "[ASR Manager] getOrCreateWorker called when worker already exists."
+    );
     return worker;
   }
-  if (workerLoading) return null;
+  if (workerLoading) {
+    console.warn(
+      "[ASR Manager] getOrCreateWorker called while already loading."
+    );
+    return null;
+  }
   if (workerError) {
     dispatchStatusUpdate("error", workerError);
     return null;
   }
   if (!navigator.gpu) {
-    console.warn("[ASR Manager] WebGPU not supported, cannot create worker.");
+    console.error(
+      "[ASR Manager] getOrCreateWorker called but WebGPU not supported."
+    );
     workerError = "WebGPU not supported";
     dispatchStatusUpdate("error", workerError);
     return null;
@@ -94,6 +109,10 @@ export function getOrCreateWorker(): Worker | null {
   dispatchStatusUpdate("loading", "Creating ASR Worker...");
 
   try {
+    if (currentWorkerUrl) {
+      URL.revokeObjectURL(currentWorkerUrl);
+      currentWorkerUrl = null;
+    }
     worker = fromScriptText(WorkerCode, {});
 
     worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
@@ -121,7 +140,6 @@ export function getOrCreateWorker(): Worker | null {
           worker?.terminate();
           worker = null;
           if (currentWorkerUrl) {
-            // Clean up Blob URL on error
             URL.revokeObjectURL(currentWorkerUrl);
             currentWorkerUrl = null;
           }
@@ -132,7 +150,6 @@ export function getOrCreateWorker(): Worker | null {
               detail: { status, ...rest, data },
             })
           );
-
           break;
       }
     };
@@ -150,7 +167,6 @@ export function getOrCreateWorker(): Worker | null {
       worker?.terminate();
       worker = null;
       if (currentWorkerUrl) {
-        // Clean up Blob URL on error
         URL.revokeObjectURL(currentWorkerUrl);
         currentWorkerUrl = null;
       }
@@ -162,16 +178,12 @@ export function getOrCreateWorker(): Worker | null {
     const initialMessage: WorkerMessage = { type: "load" };
     worker.postMessage(initialMessage);
   } catch (error: any) {
-    console.error(
-      "[ASR Manager] Failed to instantiate worker from Blob URL:",
-      error
-    );
+    console.error("[ASR Manager] Failed to instantiate worker:", error);
     workerError = `Failed to create worker: ${error.message || error}`;
     workerLoading = false;
     dispatchStatusUpdate("error", workerError);
     worker = null;
     if (currentWorkerUrl) {
-      // Clean up Blob URL on creation error
       URL.revokeObjectURL(currentWorkerUrl);
       currentWorkerUrl = null;
     }
@@ -180,9 +192,109 @@ export function getOrCreateWorker(): Worker | null {
   return worker;
 }
 
+/**
+ * Checks WebGPU support and sets initial status. Does not load the worker.
+ */
+export function initializeASRSystem(): void {
+  console.log(
+    "[ASR Manager] initializeASRSystem called (passive initialization)."
+  );
+  if (!navigator.gpu) {
+    console.warn("[ASR Manager] WebGPU not supported. ASR will be disabled.");
+    workerError = "WebGPU not supported";
+    dispatchStatusUpdate("error", workerError);
+  } else {
+    console.log(
+      "[ASR Manager] WebGPU supported. ASR is ready to be loaded on demand."
+    );
+    if (globalAsrStatus !== "error") {
+      dispatchStatusUpdate("uninitialized");
+    }
+  }
+}
+
+/**
+ * Called by UI elements (e.g., mic button) to trigger the actual
+ * ASR worker creation and model loading if it hasn't happened yet.
+ */
+export function triggerASRInitialization(): void {
+  console.log("[ASR Manager] triggerASRInitialization called.");
+  if (globalAsrStatus === "uninitialized" && !workerError) {
+    console.log(
+      "[ASR Manager] ASR is uninitialized, proceeding to load worker."
+    );
+    if (!navigator.gpu) {
+      console.error(
+        "[ASR Manager] Triggered initialization but WebGPU not supported."
+      );
+      workerError = "WebGPU not supported";
+      dispatchStatusUpdate("error", workerError);
+      return;
+    }
+    getOrCreateWorker();
+  } else if (workerLoading) {
+    console.log("[ASR Manager] Initialization already in progress.");
+  } else if (workerReady) {
+    console.log("[ASR Manager] ASR already initialized and ready.");
+  } else if (workerError) {
+    console.log(
+      "[ASR Manager] Cannot initialize due to previous error:",
+      workerError
+    );
+    dispatchStatusUpdate("error", workerError);
+  } else {
+    console.warn(
+      "[ASR Manager] triggerASRInitialization called in unexpected state:",
+      globalAsrStatus
+    );
+  }
+}
+
+/**
+ * Sends audio data to the worker for transcription if the worker is ready.
+ * @param audioData The Float32Array containing the audio samples.
+ * @param language The target language for transcription.
+ */
+export function requestTranscription(
+  audioData: Float32Array,
+  language: string
+): void {
+  console.log("[ASR Manager] requestTranscription called.");
+  if (isWorkerReady() && worker) {
+    console.log("[ASR Manager] Worker is ready, posting generate message.");
+    const message: WorkerMessage = {
+      type: "generate",
+      data: {
+        audio: audioData,
+        language: language,
+      },
+    };
+    worker.postMessage(message);
+  } else if (!worker) {
+    console.error(
+      "[ASR Manager] Transcription requested, but worker does not exist."
+    );
+    dispatchStatusUpdate("error", "Worker instance missing");
+  } else if (workerLoading) {
+    console.warn(
+      "[ASR Manager] Transcription requested, but worker is still loading."
+    );
+  } else if (workerError) {
+    console.error(
+      "[ASR Manager] Transcription requested, but worker is in error state:",
+      workerError
+    );
+    dispatchStatusUpdate("error", workerError);
+  } else {
+    console.warn(
+      "[ASR Manager] Transcription requested, but worker is not ready for unknown reasons."
+    );
+  }
+}
+
 /** Checks if the ASR worker is ready for transcription tasks. */
 export function isWorkerReady(): boolean {
-  return workerReady && !workerLoading && !workerError;
+  return !!worker && workerReady && !workerLoading && !workerError;
 }
 
 /** Gets the current worker error message, if any. */
@@ -202,46 +314,5 @@ export function stopWorkerTranscription(): void {
     console.warn(
       "[ASR Manager] Cannot send stop message: Worker not ready or doesn't exist."
     );
-  }
-}
-
-/**
- * Initializes the ASR worker if conditions are met (WebGPU support).
- * Listens for the transformers library to be loaded if necessary.
- */
-export function initializeASRSystem(transformersLibLoaded: boolean): void {
-  console.log(
-    `[ASR Manager] initializeASRSystem called. transformersLibLoaded: ${transformersLibLoaded}`
-  );
-  const initialize = () => {
-    console.log(
-      "[ASR Manager] initialize function called (after transformers loaded or immediately)."
-    );
-    if (!navigator.gpu) {
-      console.warn(
-        "[ASR Manager] WebGPU not supported during init, dispatching error."
-      );
-      workerError = "WebGPU not supported";
-      dispatchStatusUpdate("error", workerError);
-      return;
-    }
-    console.log("[ASR Manager] WebGPU supported, calling getOrCreateWorker.");
-    getOrCreateWorker();
-  };
-  if (transformersLibLoaded) {
-    console.log(
-      "[ASR Manager] Transformers library already loaded, initializing immediately."
-    );
-    initialize();
-  } else {
-    console.log(
-      "[ASR Manager] Transformers library not loaded, attaching listener."
-    );
-    if (!(window as any)._asrInitListenerAttached) {
-      document.addEventListener("transformersLoaded", initialize, {
-        once: true,
-      });
-      (window as any)._asrInitListenerAttached = true;
-    }
   }
 }

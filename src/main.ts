@@ -71,7 +71,7 @@ declare const navigator: NavigatorWithGPU;
 
   console.log("Initializing ASR system...");
   // Initialize the ASR system (creates worker, checks WebGPU, etc.)
-  initializeASRSystem(transformersLibLoaded);
+  initializeASRSystem();
   console.log("ASR system initialized");
 
   // --- All Worker/UI/Audio logic moved to respective modules ---
@@ -108,14 +108,9 @@ declare const navigator: NavigatorWithGPU;
         if (status === "update") {
           /* generally we don't care about update chunks, but maybe we can do some fancy UI stuff? */
         } else if (status === "complete") {
-          console.warn(
-            "Transcription complete:",
-            output,
-            chatInputContentEditable
-          );
           updateReactInput(chatInputContentEditable, output, false);
 
-          updateMicButtonState(mic, "idle", "Transcription complete");
+          updateMicButtonState(mic, "idle");
           chatInputContentEditable.focus();
         } else if (status === "error") {
           console.error("Transcription error:", data);

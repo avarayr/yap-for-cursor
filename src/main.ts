@@ -56,7 +56,6 @@ declare const navigator: NavigatorWithGPU;
       }');
                   console.log('[ASR] Transformers library imported successfully.');
                   window.transformers = { AutoTokenizer, AutoProcessor, WhisperForConditionalGeneration, TextStreamer, full, env };
-                  window.transformers.env.allowLocalModels = false;
                   window.transformers.env.backends.onnx.logLevel = 'info';
                   console.log('[ASR] Transformers library loaded and configured.');
                   document.dispatchEvent(new CustomEvent('transformersLoaded'));

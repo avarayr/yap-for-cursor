@@ -3,6 +3,7 @@ import type {
   WorkerMessage,
   WorkerResponse,
   AsrResultDetail,
+  AsrManagerState,
 } from "../types";
 import { fromScriptText } from "@aidenlx/esbuild-plugin-inline-worker/utils";
 import WorkerCode from "worker:./worker.ts";
@@ -30,43 +31,61 @@ interface GPUCommandBuffer {}
 
 declare const navigator: NavigatorWithGPU;
 
-// --- Global ASR Status Management ---
-export let globalAsrStatus: AsrStatusUpdateDetail["status"] | "uninitialized" =
-  "uninitialized";
-export let globalAsrMessage: string = "Click to initialize";
-
-// --- Worker Instance Management ---
+// --- Refactored ASR State Management ---
+let managerState: AsrManagerState = "uninitialized";
+let managerMessage: string = "Click mic to initialize";
 let worker: Worker | null = null;
-let workerReady: boolean = false;
-let workerLoading: boolean = false;
-let workerError: string | null = null;
 let currentWorkerUrl: string | null = null;
 
 /**
- * Dispatches a global ASR status update event.
+ * Updates the manager state and dispatches a global ASR status update event.
  */
-function dispatchStatusUpdate(
-  status: AsrStatusUpdateDetail["status"] | "uninitialized",
-  message?: string
-) {
-  globalAsrStatus = status;
-  globalAsrMessage =
-    message ||
-    (status === "ready"
-      ? "ASR Ready"
-      : status === "error"
-      ? `ASR Error: ${workerError || "Unknown"}`
-      : status === "loading"
-      ? "Loading ASR model..."
-      : status === "initializing"
-      ? "Initializing ASR..."
-      : status === "uninitialized"
-      ? "Click mic to initialize"
-      : "ASR status unknown");
-  console.log(`ASR Status: ${status}`, message ? `(${message})` : "");
+function setManagerState(state: AsrManagerState, message?: string) {
+  // Avoid redundant updates if state and message are the same
+  if (state === managerState && message === managerMessage) {
+    return;
+  }
+  console.log(
+    `[ASR Manager] State changing: ${managerState} -> ${state}`,
+    message ? `(${message})` : ""
+  );
+  managerState = state;
+
+  // Determine user-facing message based on state
+  switch (state) {
+    case "uninitialized":
+      managerMessage = message || "Click mic to initialize";
+      break;
+    case "initializing":
+      managerMessage = message || "Initializing ASR...";
+      break;
+    case "loading_model":
+      managerMessage = message || "Loading ASR model...";
+      break;
+    case "warming_up":
+      managerMessage = message || "Preparing model...";
+      break;
+    case "ready":
+      managerMessage = message || "ASR Ready";
+      break;
+    case "error":
+      managerMessage = message || "ASR Error: Unknown";
+      break;
+    default:
+      console.warn(
+        "[ASR Manager] setManagerState called with unknown state:",
+        state
+      );
+      managerMessage = "ASR Status Unknown";
+  }
+
+  // Dispatch the manager state directly
+  console.log(
+    `[ASR Manager] Dispatching asrStatusUpdate: { state: ${state}, message: ${managerMessage} }`
+  );
   const detail: AsrStatusUpdateDetail = {
-    status: status === "uninitialized" ? "initializing" : status,
-    message: globalAsrMessage,
+    state: state, // Use the AsrManagerState directly
+    message: managerMessage,
   };
   document.dispatchEvent(
     new CustomEvent<AsrStatusUpdateDetail>("asrStatusUpdate", { detail })
@@ -74,39 +93,51 @@ function dispatchStatusUpdate(
 }
 
 /**
- * Creates or returns the existing ASR worker instance.
- * Should only be called internally by triggerASRInitialization.
+ * Terminates the worker and resets the state.
+ * @param errorMessage Optional error message to set.
  */
-function getOrCreateWorker(): Worker | null {
-  console.log("[ASR Manager] getOrCreateWorker called.");
+function cleanupWorker(errorMessage?: string) {
+  console.warn(
+    `[ASR Manager] Cleaning up worker. Error: ${errorMessage || "None"}`
+  );
+  if (worker) {
+    worker.terminate();
+    worker = null;
+  }
+  if (currentWorkerUrl) {
+    URL.revokeObjectURL(currentWorkerUrl);
+    currentWorkerUrl = null;
+  }
+  // Ensure state update happens *after* potential termination
+  setManagerState(errorMessage ? "error" : "uninitialized", errorMessage);
+}
+
+/**
+ * Creates the ASR worker instance and sets up listeners.
+ * Should only be called internally.
+ */
+function createWorker(): boolean {
+  console.log("[ASR Manager] createWorker called.");
   if (worker) {
     console.warn(
-      "[ASR Manager] getOrCreateWorker called when worker already exists."
+      "[ASR Manager] createWorker called when worker already exists."
     );
-    return worker;
+    return true;
   }
-  if (workerLoading) {
+  if (managerState !== "uninitialized" && managerState !== "error") {
     console.warn(
-      "[ASR Manager] getOrCreateWorker called while already loading."
+      `[ASR Manager] createWorker called in unexpected state: ${managerState}`
     );
-    return null;
-  }
-  if (workerError) {
-    dispatchStatusUpdate("error", workerError);
-    return null;
-  }
-  if (!navigator.gpu) {
-    console.error(
-      "[ASR Manager] getOrCreateWorker called but WebGPU not supported."
-    );
-    workerError = "WebGPU not supported";
-    dispatchStatusUpdate("error", workerError);
-    return null;
+    return false;
   }
 
-  workerLoading = true;
-  console.log("[ASR Manager] Attempting to create worker...");
-  dispatchStatusUpdate("loading", "Creating ASR Worker...");
+  if (!navigator.gpu) {
+    console.error("[ASR Manager] createWorker: WebGPU not supported.");
+    setManagerState("error", "WebGPU not supported");
+    return false;
+  }
+
+  setManagerState("initializing", "Creating ASR Worker...");
 
   try {
     if (currentWorkerUrl) {
@@ -114,41 +145,42 @@ function getOrCreateWorker(): Worker | null {
       currentWorkerUrl = null;
     }
     worker = fromScriptText(WorkerCode, {});
+    currentWorkerUrl = (worker as any).objectURL;
 
     worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
       const { status, data, ...rest } = e.data;
       console.log("[ASR Manager] Received message from worker:", e.data);
+
       switch (status) {
         case "loading":
-          dispatchStatusUpdate("loading", data);
+          // Worker sends progress messages during model download
+          setManagerState("loading_model", data || "Loading model...");
           break;
         case "ready":
-          workerReady = true;
-          workerLoading = false;
-          workerError = null;
-          dispatchStatusUpdate("ready");
+          // Worker signals model is loaded and warmed up
+          setManagerState("ready");
           break;
         case "error":
           console.error(
             "[ASR Manager] Received error status from Worker:",
             data
           );
-          workerError = data || "Unknown worker error";
-          workerLoading = false;
-          workerReady = false;
-          dispatchStatusUpdate("error", workerError);
-          worker?.terminate();
-          worker = null;
-          if (currentWorkerUrl) {
-            URL.revokeObjectURL(currentWorkerUrl);
-            currentWorkerUrl = null;
-          }
+          cleanupWorker(data || "Unknown worker error");
           break;
-        default:
+        case "transcribing_start":
+        case "update":
+        case "complete":
+          // Result-related statuses are dispatched via asrResult
           document.dispatchEvent(
             new CustomEvent<AsrResultDetail>("asrResult", {
               detail: { status, ...rest, data },
             })
+          );
+          break;
+        default:
+          console.warn(
+            "[ASR Manager] Received unknown status from worker:",
+            status
           );
           break;
       }
@@ -160,16 +192,7 @@ function getOrCreateWorker(): Worker | null {
         err.message,
         err
       );
-      workerError = err.message || "Unhandled worker error";
-      workerLoading = false;
-      workerReady = false;
-      dispatchStatusUpdate("error", `Worker failed: ${workerError}`);
-      worker?.terminate();
-      worker = null;
-      if (currentWorkerUrl) {
-        URL.revokeObjectURL(currentWorkerUrl);
-        currentWorkerUrl = null;
-      }
+      cleanupWorker(err.message || "Unhandled worker error");
     };
 
     console.log(
@@ -177,75 +200,55 @@ function getOrCreateWorker(): Worker | null {
     );
     const initialMessage: WorkerMessage = { type: "load" };
     worker.postMessage(initialMessage);
+    // State is already 'initializing', worker onmessage will update state further
+    return true;
   } catch (error: any) {
     console.error("[ASR Manager] Failed to instantiate worker:", error);
-    workerError = `Failed to create worker: ${error.message || error}`;
-    workerLoading = false;
-    dispatchStatusUpdate("error", workerError);
-    worker = null;
-    if (currentWorkerUrl) {
-      URL.revokeObjectURL(currentWorkerUrl);
-      currentWorkerUrl = null;
-    }
+    cleanupWorker(`Failed to create worker: ${error.message || error}`);
+    return false;
   }
-
-  return worker;
 }
 
 /**
- * Checks WebGPU support and sets initial status. Does not load the worker.
+ * Checks WebGPU support and sets initial state. Does not load the worker.
  */
 export function initializeASRSystem(): void {
   console.log(
     "[ASR Manager] initializeASRSystem called (passive initialization)."
   );
+  if (managerState !== "uninitialized") {
+    console.log("[ASR Manager] Already initialized or initializing.");
+    return;
+  }
+
   if (!navigator.gpu) {
     console.warn("[ASR Manager] WebGPU not supported. ASR will be disabled.");
-    workerError = "WebGPU not supported";
-    dispatchStatusUpdate("error", workerError);
+    setManagerState("error", "WebGPU not supported");
   } else {
     console.log(
-      "[ASR Manager] WebGPU supported. ASR is ready to be loaded on demand."
+      "[ASR Manager] WebGPU supported. ASR state remains 'uninitialized'."
     );
-    if (globalAsrStatus !== "error") {
-      dispatchStatusUpdate("uninitialized");
-    }
+    // Explicitly set state (even if it's the same) to ensure event dispatch if needed
+    // setManagerState("uninitialized"); // This might be redundant if default is handled
   }
 }
 
 /**
- * Called by UI elements (e.g., mic button) to trigger the actual
- * ASR worker creation and model loading if it hasn't happened yet.
+ * Called by UI elements to trigger the actual ASR worker creation
+ * and model loading if it hasn't happened yet.
  */
 export function triggerASRInitialization(): void {
-  console.log("[ASR Manager] triggerASRInitialization called.");
-  if (globalAsrStatus === "uninitialized" && !workerError) {
-    console.log(
-      "[ASR Manager] ASR is uninitialized, proceeding to load worker."
-    );
-    if (!navigator.gpu) {
-      console.error(
-        "[ASR Manager] Triggered initialization but WebGPU not supported."
-      );
-      workerError = "WebGPU not supported";
-      dispatchStatusUpdate("error", workerError);
-      return;
-    }
-    getOrCreateWorker();
-  } else if (workerLoading) {
-    console.log("[ASR Manager] Initialization already in progress.");
-  } else if (workerReady) {
-    console.log("[ASR Manager] ASR already initialized and ready.");
-  } else if (workerError) {
-    console.log(
-      "[ASR Manager] Cannot initialize due to previous error:",
-      workerError
-    );
-    dispatchStatusUpdate("error", workerError);
+  console.log(
+    "[ASR Manager] triggerASRInitialization called. Current state:",
+    managerState
+  );
+  if (managerState === "uninitialized" || managerState === "error") {
+    console.log("[ASR Manager] Triggering worker creation...");
+    createWorker();
   } else {
-    console.warn(
-      "[ASR Manager] triggerASRInitialization called in unexpected state:",
-      globalAsrStatus
+    console.log(
+      "[ASR Manager] Initialization trigger ignored, state is:",
+      managerState
     );
   }
 }
@@ -259,8 +262,11 @@ export function requestTranscription(
   audioData: Float32Array,
   language: string
 ): void {
-  console.log("[ASR Manager] requestTranscription called.");
-  if (isWorkerReady() && worker) {
+  console.log(
+    "[ASR Manager] requestTranscription called. Current state:",
+    managerState
+  );
+  if (managerState === "ready" && worker) {
     console.log("[ASR Manager] Worker is ready, posting generate message.");
     const message: WorkerMessage = {
       type: "generate",
@@ -270,49 +276,48 @@ export function requestTranscription(
       },
     };
     worker.postMessage(message);
-  } else if (!worker) {
-    console.error(
-      "[ASR Manager] Transcription requested, but worker does not exist."
-    );
-    dispatchStatusUpdate("error", "Worker instance missing");
-  } else if (workerLoading) {
-    console.warn(
-      "[ASR Manager] Transcription requested, but worker is still loading."
-    );
-  } else if (workerError) {
-    console.error(
-      "[ASR Manager] Transcription requested, but worker is in error state:",
-      workerError
-    );
-    dispatchStatusUpdate("error", workerError);
   } else {
     console.warn(
-      "[ASR Manager] Transcription requested, but worker is not ready for unknown reasons."
+      `[ASR Manager] Transcription requested but manager state is '${managerState}'. Ignoring.`
     );
+    if (!worker) {
+      console.error(
+        "[ASR Manager] Worker instance is null, cannot transcribe."
+      );
+    }
   }
 }
 
-/** Checks if the ASR worker is ready for transcription tasks. */
+/** Checks if the ASR manager is in a ready state for transcription tasks. */
 export function isWorkerReady(): boolean {
-  return !!worker && workerReady && !workerLoading && !workerError;
+  return managerState === "ready";
 }
 
-/** Gets the current worker error message, if any. */
-export function getWorkerError(): string | null {
-  return workerError;
+/** Gets the current manager state enum value. */
+export function getManagerState(): AsrManagerState {
+  return managerState;
+}
+
+/** Gets the current manager state message. */
+export function getManagerMessage(): string {
+  return managerMessage;
 }
 
 /**
  * Sends a message to the worker to stop the current transcription.
  */
 export function stopWorkerTranscription(): void {
-  if (worker && workerReady) {
+  console.log(
+    "[ASR Manager] stopWorkerTranscription called. Current state:",
+    managerState
+  );
+  if (worker) {
     console.log("[ASR Manager] Sending stop message to worker.");
     const stopMessage: WorkerMessage = { type: "stop" };
     worker.postMessage(stopMessage);
   } else {
     console.warn(
-      "[ASR Manager] Cannot send stop message: Worker not ready or doesn't exist."
+      "[ASR Manager] Cannot send stop message: Worker does not exist."
     );
   }
 }

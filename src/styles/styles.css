@@ -20,7 +20,7 @@
 .mic-btn {
   cursor: pointer;
   padding: 4px;
-  border-radius: 50%;
+  border-radius: 10px;
   transition: background 0.2s, color 0.2s;
   display: inline-flex;
   align-items: center;
@@ -59,7 +59,7 @@
   height: 12px;
   border: 2px solid rgba(0, 0, 0, 0.2);
   border-top-color: #0cf;
-  border-radius: 50%;
+  border-radius: 10px;
   animation: sv-spin 1s linear infinite;
 }
 .mic-btn.disabled .mic-spinner {
@@ -84,6 +84,10 @@
   opacity: 0;
   transition: opacity 0.3s;
   font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 .mic-btn .status-tooltip::after {
   content: "";
@@ -128,4 +132,85 @@
   color: #e66;
   cursor: pointer;
   font-size: 10px;
+}
+
+/* --- Context Menu Styles --- */
+.asr-context-menu {
+  position: absolute; /* Ensure position is set */
+  z-index: 10000; /* Ensure it's on top */
+  background-color: var(--vscode-menu-background, #252526);
+  border: 1px solid var(--vscode-menu-border, #3c3c3c);
+  color: var(--vscode-menu-foreground, #cccccc);
+  min-width: 150px;
+  max-width: 250px; /* Optional: Prevent excessive width */
+  max-height: 40vh; /* Limit height to 40% of viewport height */
+  overflow-y: auto; /* Enable vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  border-radius: 4px;
+  font-family: var(--vscode-font-family, Arial, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+.asr-context-menu-title {
+  padding: 4px 8px;
+  font-weight: bold;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--vscode-menu-separatorBackground, #454545);
+  margin-bottom: 4px;
+  pointer-events: none; /* Don't intercept clicks */
+}
+.asr-context-menu-item {
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.asr-context-menu-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, #04395e);
+  color: var(--vscode-menu-selectionForeground, #ffffff);
+}
+.asr-context-menu-item.selected {
+  font-weight: bold;
+  /* Optional: Add a checkmark or other indicator */
+  /* Example: Use a ::before pseudo-element */
+}
+.asr-context-menu-item.selected::before {
+  content: "✓ ";
+  margin-right: 4px;
+}
+
+/* --- Custom Scrollbar for Context Menu --- */
+.asr-context-menu::-webkit-scrollbar {
+  width: 6px; /* Thinner scrollbar */
+}
+
+.asr-context-menu::-webkit-scrollbar-track {
+  background: var(
+    --vscode-menu-background,
+    #252526
+  ); /* Match menu background */
+  border-radius: 3px;
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb {
+  background-color: var(
+    --vscode-scrollbarSlider-background,
+    #4d4d4d
+  ); /* Subtle thumb color */
+  border-radius: 3px;
+  border: 1px solid var(--vscode-menu-background, #252526); /* Creates a small border effect */
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(
+    --vscode-scrollbarSlider-hoverBackground,
+    #6b6b6b
+  ); /* Darker on hover */
+}
+
+/* Firefox scrollbar styling */
+.asr-context-menu {
+  scrollbar-width: thin; /* Use thin scrollbar */
+  scrollbar-color: var(--vscode-scrollbarSlider-background, #4d4d4d)
+    var(--vscode-menu-background, #252526); /* thumb track */
 }

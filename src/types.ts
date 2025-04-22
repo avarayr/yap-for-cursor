@@ -32,7 +32,7 @@ interface GPUCommandBuffer {
 
 // Custom event detail types
 export interface AsrStatusUpdateDetail {
-  status: "initializing" | "loading" | "ready" | "error";
+  state: AsrManagerState;
   message?: string;
 }
 
@@ -46,6 +46,16 @@ export interface AsrResultDetail {
 
 // Type for the state of the mic button
 export type MicButtonState = "idle" | "recording" | "transcribing" | "disabled";
+
+// New: Type for the overall ASR Manager state
+export type AsrManagerState =
+  | "uninitialized"
+  | "initializing" // Worker being created, initial load message sent
+  | "loading_model" // Worker loading model files
+  | "warming_up" // Worker warming up model (optional distinction)
+  | "ready" // Worker loaded and ready for transcription
+  // | "transcribing" // We can track this via mic button state or add here if needed globally
+  | "error";
 
 // Extend HTMLElement to include custom properties used on the mic button
 export interface MicButtonElement extends HTMLDivElement {

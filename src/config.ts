@@ -1,4 +1,3 @@
 export const HUGGING_FACE_TRANSFORMERS_VERSION = "3.5.0"; // Or latest compatible
 export const TARGET_SAMPLE_RATE = 16000; // Whisper expects 16kHz
-export const ASR_LANGUAGE = "english"; // Specify language for transcription
 export const MAX_NEW_TOKENS = 128; // Max tokens for ASR output

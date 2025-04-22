@@ -1,19 +1,25 @@
-import { setCurrentAsrInstance } from "../asr/instance";
 import {
-  globalAsrMessage as currentAsrMessage,
-  globalAsrStatus as currentAsrStatus,
+  getManagerMessage,
+  getManagerState,
   isWorkerReady,
   requestTranscription,
   stopWorkerTranscription,
   triggerASRInitialization,
 } from "../asr/manager";
+import { getCurrentAsrInstance, setCurrentAsrInstance } from "../asr/instance";
 import { processAudioBlob } from "../audio/processing";
 import * as CONFIG from "../config";
 import type {
   AsrStatusUpdateDetail,
   MicButtonElement,
   MicButtonState,
+  AsrManagerState,
 } from "../types";
+import {
+  createLanguageContextMenu,
+  getSelectedLanguage,
+  setSelectedLanguage,
+} from "./context-menu";
 import { DOM_SELECTORS } from "./dom-selectors";
 import styles from "inline:../styles/styles.css";
 
@@ -36,154 +42,181 @@ export function updateMicButtonState(
 ): void {
   if (!button) return;
 
-  // Read the *global* ASR status from the manager
-  const actualAsrStatus = currentAsrStatus;
-  const actualAsrMessage = currentAsrMessage;
+  // Read the *global* ASR state and message from the manager
+  const actualAsrState = getManagerState();
+  const actualAsrMessage = getManagerMessage();
 
-  // Determine the effective state for the UI based on global status
-  let effectiveState: MicButtonState | "loading" | "uninitialized" = newState; // Allow internal state but override based on global
+  // Determine the effective state for the UI based on global state
+  let effectiveState: MicButtonState | "loading" | "uninitialized" = newState;
   let displayMessage = message; // Message specifically passed to this function
 
-  if (actualAsrStatus === "uninitialized") {
-    effectiveState = "uninitialized";
-    displayMessage = actualAsrMessage || "Click to load ASR";
-  } else if (
-    actualAsrStatus === "initializing" ||
-    actualAsrStatus === "loading"
-  ) {
-    effectiveState = "loading"; // Treat both as a visual loading state
-    displayMessage = actualAsrMessage;
-  } else if (actualAsrStatus === "error") {
-    effectiveState = "disabled";
-    displayMessage = `ASR Error: ${actualAsrMessage}`;
-  } else if (actualAsrStatus !== "ready" && newState !== "transcribing") {
-    // If global status isn't ready, but we aren't actively transcribing, treat as disabled
-    // This handles edge cases where internal state might be 'idle' but manager isn't 'ready'
-    effectiveState = "disabled";
-    displayMessage = actualAsrMessage || "ASR not ready";
-  } else if (newState === "transcribing") {
-    // If the requested state is transcribing, keep it, assuming manager is ready or will be soon
-    effectiveState = "transcribing";
-    displayMessage = message || "Transcribing...";
-  } else if (newState === "recording") {
-    // If requesting recording, ensure manager is ready
-    if (actualAsrStatus === "ready") {
-      effectiveState = "recording";
-      displayMessage = message || "Recording...";
-    } else {
-      // Cannot record if manager isn't ready
+  // --- State Overrides based on Manager State ---
+  switch (actualAsrState) {
+    case "uninitialized":
+      effectiveState = "uninitialized";
+      displayMessage = actualAsrMessage || "Click to initialize";
+      break;
+    case "initializing":
+    case "loading_model":
+    case "warming_up":
+      effectiveState = "loading"; // Treat all loading stages as 'loading' visually
+      displayMessage = actualAsrMessage;
+      break;
+    case "error":
+      effectiveState = "disabled";
+      displayMessage = `Error: ${actualAsrMessage}`;
+      break;
+    case "ready":
+      // If manager is ready, allow the requested newState unless it forces disabled
+      if (newState === "recording") {
+        effectiveState = "recording";
+        displayMessage = message || "Recording...";
+      } else if (newState === "transcribing") {
+        effectiveState = "transcribing";
+        displayMessage = message || "Transcribing...";
+      } else if (newState === "disabled") {
+        effectiveState = "disabled";
+        displayMessage = message || "Disabled";
+      } else {
+        // Default to idle if ready and no other active state requested
+        effectiveState = "idle";
+        displayMessage = message;
+      }
+      break;
+    // If managerState is not one of the above, something is wrong, default to disabled?
+    // Or let the initial newState pass through? Let's default to disabled for safety.
+    default:
+      console.warn(
+        `[MicButton] Unexpected manager state: ${actualAsrState}, defaulting UI to disabled.`
+      );
       effectiveState = "disabled";
       displayMessage = actualAsrMessage || "ASR not ready";
-    }
-  } else {
-    // Default to idle if manager is ready and no other state applies
-    effectiveState = "idle";
-    displayMessage = message || "Hold to Record, Release to Transcribe";
   }
 
-  // Update button's internal state marker if needed (optional)
+  // Ensure consistency: If the effective state requires ASR readiness (recording, transcribing),
+  // but the manager isn't actually ready (e.g., due to race condition), force disabled.
+  if (
+    (effectiveState === "recording" || effectiveState === "transcribing") &&
+    actualAsrState !== "ready"
+  ) {
+    console.warn(
+      `[MicButton] State mismatch: Requested ${effectiveState} but manager state is ${actualAsrState}. Forcing disabled.`
+    );
+    effectiveState = "disabled";
+    displayMessage = actualAsrMessage || "ASR not ready";
+  }
+
+  // Update button's internal state marker (used for logic like mouseleave)
   button.asrState =
     effectiveState === "uninitialized" || effectiveState === "loading"
-      ? "idle"
-      : (effectiveState as MicButtonState); // Cast 'idle'|'recording'|'transcribing'|'disabled'
+      ? "idle" // Treat loading/uninit as idle internally for logic purposes
+      : (effectiveState as MicButtonState); // Cast: 'idle'|'recording'|'transcribing'|'disabled'
 
-  button.classList.remove("active", "transcribing", "disabled");
-  button.innerHTML = ""; // Clear previous content
+  // Check if we are staying in the loading state and a spinner already exists
+  const alreadyHasSpinner = !!button.querySelector(".mic-spinner");
+  const isStayingLoading = effectiveState === "loading" && alreadyHasSpinner;
 
-  // Ensure tooltip exists
-  let tooltip = button.querySelector<HTMLSpanElement>(".status-tooltip");
-  if (!tooltip) {
-    tooltip = document.createElement("span");
+  // Only clear and rebuild if not just updating the message for an existing loading state
+  if (!isStayingLoading) {
+    button.classList.remove("active", "transcribing", "disabled");
+    button.innerHTML = ""; // Clear previous content
+
+    // Create and append the tooltip span first
+    const tooltip = document.createElement("span");
     tooltip.className = "status-tooltip";
     button.appendChild(tooltip);
-  }
-
-  let iconClass = "";
-  let defaultTitle = "";
-
-  switch (effectiveState) {
-    case "recording":
-      button.classList.add("active");
-      iconClass = "codicon-primitive-square";
-      defaultTitle = displayMessage;
-      break;
-    case "transcribing":
-      button.classList.add("transcribing");
-      // Container for spinner and stop button
-      const transcribeControlContainer = document.createElement("div");
-      transcribeControlContainer.className = "transcribe-controls"; // Apply class
-
-      const spinnerT = document.createElement("div");
-      spinnerT.className = "mic-spinner";
-      transcribeControlContainer.appendChild(spinnerT);
-
-      // Add Stop button (X icon)
-      const stopBtn = document.createElement("span");
-      // Apply style class along with codicon classes
-      stopBtn.className =
-        "codicon codicon-x stop-transcription-btn stop-btn-style"; // Added stop-btn-style class
-      stopBtn.setAttribute("title", "Stop Transcription");
-      transcribeControlContainer.appendChild(stopBtn);
-
-      button.appendChild(transcribeControlContainer);
-      defaultTitle = displayMessage;
-      iconClass = ""; // No main icon when spinner/stop are shown
-      break;
-    case "loading": // New visual state for loading/initializing
-      button.classList.add("disabled"); // Treat visually as disabled during load
-      const spinnerL = document.createElement("div");
-      spinnerL.className = "mic-spinner";
-      button.appendChild(spinnerL);
-      defaultTitle = displayMessage;
-      iconClass = "";
-      break;
-    case "disabled":
-      button.classList.add("disabled");
-      // Keep spinner if the *reason* for disabled is loading/init (handled by 'loading' case now)
-      if (actualAsrStatus === "error") {
-        iconClass = "codicon-error";
-      } else {
-        // Default disabled icon if not error or loading
-        iconClass = "codicon-mic-off";
-      }
-      defaultTitle = displayMessage;
-      break;
-    case "uninitialized": // New visual state for uninitialized
-      // Visually similar to idle, but different tooltip
-      iconClass = "codicon-mic";
-      defaultTitle = displayMessage;
-      break;
-    case "idle":
-    default:
-      iconClass = "codicon-mic";
-      defaultTitle = displayMessage;
-      break;
-  }
-
-  if (iconClass) {
-    const icon = document.createElement("span");
-    icon.className = `codicon ${iconClass} !text-[12px]`;
-    // Ensure icon is added before the tooltip if tooltip was recreated
-    if (tooltip && tooltip.parentNode !== button) {
-      button.appendChild(icon);
-      button.appendChild(tooltip);
-    } else if (tooltip) {
-      button.insertBefore(icon, tooltip);
-    } else {
-      button.appendChild(icon);
+  } else {
+    // If staying loading, ensure tooltip exists
+    let tooltip = button.querySelector<HTMLSpanElement>(".status-tooltip");
+    if (!tooltip) {
+      tooltip = document.createElement("span");
+      tooltip.className = "status-tooltip";
+      button.appendChild(tooltip); // Append if missing
     }
   }
 
-  // Update tooltip content and button title attribute
+  // Retrieve the potentially recreated/ensured tooltip reference
+  const tooltip = button.querySelector<HTMLSpanElement>(".status-tooltip");
+  let iconClass = "";
+  let defaultTitle = displayMessage || ""; // Use determined display message
+
+  // Handle tooltip visibility
+  if (tooltip) {
+    tooltip.style.display = defaultTitle ? "block" : "none";
+  }
+
+  // Only execute the switch if we are not just updating the message for loading state
+  if (!isStayingLoading) {
+    switch (effectiveState) {
+      case "recording":
+        button.classList.add("active");
+        iconClass = "codicon-primitive-square";
+        break;
+      case "transcribing":
+        button.classList.add("transcribing");
+        const transcribeControlContainer = document.createElement("div");
+        transcribeControlContainer.className = "transcribe-controls";
+        const spinnerT = document.createElement("div");
+        spinnerT.className = "mic-spinner";
+        transcribeControlContainer.appendChild(spinnerT);
+        const stopBtn = document.createElement("span");
+        stopBtn.className =
+          "codicon codicon-x stop-transcription-btn stop-btn-style";
+        stopBtn.setAttribute("title", "Stop Transcription");
+        transcribeControlContainer.appendChild(stopBtn);
+        button.appendChild(transcribeControlContainer);
+        iconClass = ""; // No main icon
+        break;
+      case "loading":
+        button.classList.add("disabled");
+        if (!button.querySelector(".mic-spinner")) {
+          const spinnerL = document.createElement("div");
+          spinnerL.className = "mic-spinner";
+          button.appendChild(spinnerL);
+        }
+        iconClass = ""; // No main icon
+        break;
+      case "disabled":
+        button.classList.add("disabled");
+        if (actualAsrState === "error") {
+          iconClass = "codicon-error";
+        } else {
+          iconClass = "codicon-mic-off"; // Default disabled icon
+        }
+        break;
+      case "uninitialized":
+        iconClass = "codicon-mic"; // Same as idle visually
+        break;
+      case "idle":
+      default:
+        iconClass = "codicon-mic";
+        break;
+    }
+
+    if (iconClass) {
+      const icon = document.createElement("span");
+      icon.className = `codicon ${iconClass} !text-[12px]`;
+      // Ensure icon is added correctly relative to the tooltip
+      if (tooltip && tooltip.parentNode === button) {
+        button.insertBefore(icon, tooltip);
+      } else {
+        // Append icon first, then tooltip if it exists
+        button.appendChild(icon);
+        if (tooltip && !button.contains(tooltip)) {
+          button.appendChild(tooltip);
+        }
+      }
+    }
+  } else {
+    // If staying loading, ensure disabled class and update title
+    button.classList.add("disabled");
+  }
+
+  // Update tooltip content and button title attribute (always)
   if (tooltip) {
     tooltip.textContent = defaultTitle;
   }
   button.setAttribute("title", defaultTitle);
-
-  // Re-append tooltip if it wasn't already there (might have been cleared)
-  if (!button.querySelector(".status-tooltip") && tooltip) {
-    button.appendChild(tooltip);
-  }
 }
 
 // --- Initialization for each Mic Instance ---
@@ -227,9 +260,6 @@ export function initWave(box: HTMLElement): void {
   const mic = document.createElement("div") as MicButtonElement;
   mic.className = "mic-btn";
   mic.dataset.asrInit = "1";
-  // Initial state is determined by the manager now, set via updateMicButtonState
-  // mic.asrState = "idle"; // Remove this, rely on updateMicButtonState
-  // mic.setAttribute("title", "Hold to Record, Release to Transcribe"); // Remove this
 
   const statusTooltip = document.createElement("span");
   statusTooltip.className = "status-tooltip";
@@ -267,23 +297,22 @@ export function initWave(box: HTMLElement): void {
   let audioChunks: Blob[] = [];
   let isCancelled = false;
 
-  // Set initial button state based on global status
-  updateMicButtonState(mic, "idle"); // Initial call uses 'idle' as base, but will be overridden by global status check inside
+  // Set initial button state based on current global state
+  updateMicButtonState(mic, "idle");
 
-  // Listen to global ASR status updates to keep the button current
+  // Listen to global ASR status updates (using AsrStatusUpdateDetail)
   const handleAsrStatusUpdate = (event: Event) => {
-    // Update the button state whenever the global status changes
-    // Pass the current internal state ('idle' is safe default) so updateMicButtonState can decide
+    const customEvent = event as CustomEvent<AsrStatusUpdateDetail>;
+    console.log("[MicButton] ASR Status Update Received:", customEvent.detail);
+    // Trigger a UI update based on the new global state
+    // Pass the button's current internal state as the base for comparison/override
     updateMicButtonState(mic, mic.asrState || "idle");
-    // We don't need event.detail here, just the notification that status changed
-    const customEvent = event as CustomEvent<AsrStatusUpdateDetail>; // Cast if needed
-    console.log("ASR Status Update Received by Mic:", customEvent.detail);
   };
   document.addEventListener(
     "asrStatusUpdate",
     handleAsrStatusUpdate as EventListener
   );
-  // TODO: Consider adding cleanup for this listener if the element is removed
+  // TODO: Add cleanup for this listener if the element is removed
 
   // --- Internal Helper Functions ---
   function draw() {
@@ -382,10 +411,12 @@ export function initWave(box: HTMLElement): void {
 
   // --- startRecording: Now only called when ASR is ready ---
   function startRecording() {
-    // No need to check status here anymore, mousedown handler does it.
     // Assume we are in 'ready' state if this function is called.
 
-    console.log("Attempting to start recording (ASR should be ready)...");
+    console.log(
+      "Attempting to start recording (ASR should be ready)...",
+      getManagerState()
+    );
     updateMicButtonState(mic, "recording"); // Update UI to recording state
     audioChunks = [];
     isCancelled = false; // Reset cancel flag for new recording
@@ -398,7 +429,7 @@ export function initWave(box: HTMLElement): void {
             "Mic state changed away from recording during getUserMedia, aborting."
           );
           ms.getTracks().forEach((track) => track.stop());
-          updateMicButtonState(mic, "idle", "Recording aborted");
+          updateMicButtonState(mic, "idle");
           return;
         }
         stream = ms;
@@ -452,7 +483,7 @@ export function initWave(box: HTMLElement): void {
             if (isCancelled) {
               console.log("Recording was cancelled. Discarding audio chunks.");
               audioChunks = []; // Clear chunks
-              updateMicButtonState(mic, "idle", "Recording cancelled");
+              updateMicButtonState(mic, "idle");
               isCancelled = false; // Reset flag
               return; // Don't process cancelled audio
             }
@@ -465,7 +496,7 @@ export function initWave(box: HTMLElement): void {
             }
 
             console.log("Processing recorded audio chunks...");
-            updateMicButtonState(mic, "transcribing", "Processing audio..."); // Set state to transcribing
+            updateMicButtonState(mic, "transcribing"); // Set state to transcribing
 
             const audioBlob = new Blob(audioChunks, {
               type: mediaRecorder?.mimeType || "audio/webm",
@@ -474,9 +505,13 @@ export function initWave(box: HTMLElement): void {
 
             try {
               const float32Array = await processAudioBlob(audioBlob);
+              // Get the currently selected language from localStorage
+              const currentLanguage = getSelectedLanguage();
+              console.log(`Requesting transcription in: ${currentLanguage}`);
+
               if (float32Array && isWorkerReady()) {
-                updateMicButtonState(mic, "transcribing", "Transcribing..."); // Update message
-                requestTranscription(float32Array, CONFIG.ASR_LANGUAGE);
+                updateMicButtonState(mic, "transcribing"); // Update message
+                requestTranscription(float32Array, currentLanguage); // Use selected language
               } else if (!float32Array) {
                 console.error("Audio processing failed.");
                 updateMicButtonState(mic, "idle", "Audio processing failed");
@@ -518,7 +553,7 @@ export function initWave(box: HTMLElement): void {
   // --- Event Listeners ---
 
   // Mousedown: Trigger initialization or start recording
-  mic.addEventListener("mousedown", (e: MouseEvent) => {
+  mic.addEventListener("click", (e: MouseEvent) => {
     if (e.button !== 0) return; // Only left click
 
     // Set current instance context on any click/mousedown
@@ -526,69 +561,41 @@ export function initWave(box: HTMLElement): void {
       setCurrentAsrInstance({ mic, chatInputContentEditable });
     }
 
-    const status = currentAsrStatus; // Check global status from manager
-
-    console.log("Mousedown detected. ASR Status:", status);
-
-    if (status === "uninitialized") {
-      console.log("ASR uninitialized, triggering initialization...");
-      triggerASRInitialization(); // Request worker/model loading
-      // Update button state immediately to show loading feedback
-      updateMicButtonState(mic, "idle"); // Update state (will show loading based on global status)
-    } else if (status === "ready") {
-      console.log("ASR ready, starting recording...");
-      startRecording(); // ASR is ready, proceed to record
-    } else if (status === "loading" || status === "initializing") {
-      console.log("ASR is currently loading/initializing. Please wait.");
-      // Optionally provide feedback, though updateMicButtonState handles the visual
-      updateMicButtonState(mic, "idle"); // Refresh state to ensure spinner shows
-    } else if (status === "error") {
-      console.warn("Cannot start recording, ASR is in error state.");
-      updateMicButtonState(mic, "idle"); // Refresh state to ensure error icon shows
-    } else {
-      // Handle other states like 'transcribing' - perhaps do nothing on mousedown
-      console.log("Mousedown ignored in current state:", status);
-    }
-  });
-
-  // Mouseup: Stop recording if it was active
-  mic.addEventListener("mouseup", (e: MouseEvent) => {
-    if (e.button !== 0) return;
-    // Check the button's state, not the global ASR status
     if (mic.asrState === "recording") {
-      console.log("Mouseup detected while recording, stopping recording.");
-      stopRecording(); // Stop normally, will trigger transcription
-    } else {
-      console.log("Mouseup detected, but not in recording state.");
+      // If the mic is already recording, stop the recording
+      stopRecording();
+      return;
     }
-  });
 
-  // Mouseleave: Cancel recording if mouse leaves while button is down
-  mic.addEventListener("mouseleave", (e: MouseEvent) => {
-    // Check if left button is still pressed and the button state is recording
-    if (e.buttons === 1 && mic.asrState === "recording") {
-      console.log("Mouse left while recording, cancelling.");
-      isCancelled = true; // Set cancel flag
-      stopRecording(true); // Force stop recording immediately
-      // State will be updated in the stopRecording/onstop logic now
-    }
-  });
+    const managerState = getManagerState(); // Check global status from manager
 
-  // Click: Handle stop transcription button click
-  mic.addEventListener("click", (e: MouseEvent) => {
-    // Stop transcription if the stop button is clicked
-    if (
-      (e.target as HTMLElement)?.classList.contains("stop-transcription-btn")
-    ) {
-      e.stopPropagation(); // Prevent other mic click handlers
-      console.log("Stop transcription button clicked.");
-      stopWorkerTranscription(); // Tell the worker to stop/discard
-      updateMicButtonState(mic, "idle", "Transcription stopped");
-      // Optionally clear the ASR target instance if needed
-      // clearCurrentAsrInstanceTarget();
+    console.log("Mousedown detected. ASR State:", managerState);
+
+    switch (managerState) {
+      case "uninitialized":
+        console.log("ASR uninitialized, triggering initialization...");
+        triggerASRInitialization();
+        updateMicButtonState(mic, "idle", "Initializing..."); // Update state (will show loading based on global status)
+        break;
+      case "ready":
+        console.log("ASR ready, starting recording...");
+        startRecording(); // ASR is ready, proceed to record
+        break;
+      case "initializing":
+      case "loading_model":
+      case "warming_up":
+        console.log("ASR is currently loading/initializing. Please wait.");
+        updateMicButtonState(mic, "idle"); // Refresh state to show loading/disabled
+        break;
+      case "error":
+        console.warn("Cannot start recording, ASR is in error state.");
+        updateMicButtonState(mic, "idle"); // Refresh state to show error
+        break;
+      default:
+        // Handle other states like 'transcribing' - do nothing on mousedown?
+        console.log("Mousedown ignored in current state:", managerState);
+        break;
     }
-    // Note: We no longer need the check for !isWorkerReady() here
-    // because mousedown handles the initialization trigger.
   });
 
   // Cancel button event (Keep as is)
@@ -603,6 +610,28 @@ export function initWave(box: HTMLElement): void {
       // State is updated within stopRecording/onstop now
     }
   });
+
+  // --- Context Menu Listener ---
+  mic.addEventListener("contextmenu", (e: MouseEvent) => {
+    e.preventDefault(); // Prevent default browser menu
+    console.log("Right-click detected on mic button.");
+
+    // Set current instance context if needed (might already be set by mousedown)
+    if (chatInputContentEditable && !getCurrentAsrInstance()) {
+      setCurrentAsrInstance({ mic, chatInputContentEditable });
+    }
+
+    // Create and show the language menu, passing the mic element
+    createLanguageContextMenu(mic, (selectedLang) => {
+      // Pass `mic` element instead of coordinates
+      // This callback runs when a language is selected from the menu
+      setSelectedLanguage(selectedLang); // Persist the choice
+      // Optional: Provide feedback to the user, e.g., update tooltip briefly
+      // updateMicButtonState(mic, "idle", `Language set to ${selectedLang}`);
+      // The actual language use happens during `requestTranscription`
+    });
+  });
+  // --------------------------
 }
 
 // --- DOM Observer Setup ---
@@ -611,10 +640,8 @@ export function setupMicButtonObserver(): void {
   const handleInitialStatus = (event: Event) => {
     // Cast to CustomEvent to access detail if needed (optional)
     const customEvent = event as CustomEvent<AsrStatusUpdateDetail>;
-    console.log(
-      "Observer setup: Received initial ASR status",
-      customEvent.detail
-    );
+    const state = customEvent.detail.state; // Use the new state property
+    console.log("Observer setup: Received initial ASR state", state);
     // Potentially update any existing buttons if needed, though initWave handles new ones
     document
       .querySelectorAll<HTMLElement>(DOM_SELECTORS.fullInputBox)

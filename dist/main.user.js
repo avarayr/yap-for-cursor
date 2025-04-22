@@ -28,100 +28,132 @@
     return worker2;
   };
 
-  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-wfIie4/worker_uKiry.ts
-  var worker_uKiry_default = `var F=Object.defineProperty,x=Object.defineProperties;var C=Object.getOwnPropertyDescriptors;var T=Object.getOwnPropertySymbols;var G=Object.prototype.hasOwnProperty,E=Object.prototype.propertyIsEnumerable;var m=(e,o,r)=>o in e?F(e,o,{enumerable:!0,configurable:!0,writable:!0,value:r}):e[o]=r,W=(e,o)=>{for(var r in o||(o={}))G.call(o,r)&&m(e,r,o[r]);if(T)for(var r of T(o))E.call(o,r)&&m(e,r,o[r]);return e},h=(e,o)=>x(e,C(o));var i=(e,o,r)=>m(e,typeof o!="symbol"?o+"":o,r);console.log("[Worker] Code execution started.");var d=!1,f,y,w,P,v,p;async function A(){console.log("[Worker] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Worker] Transformers library imported successfully."),f=e.AutoTokenizer,y=e.AutoProcessor,w=e.WhisperForConditionalGeneration,P=e.TextStreamer,v=e.full,p=e.env,p.allowLocalModels=!1,p.backends.onnx.logLevel="info"}catch(e){throw console.error("[Worker] Failed to import Transformers library:",e),e}}var L=128,t=class{static async getInstance(o){if(f||await A(),this.model_id="onnx-community/whisper-base",!this.modelPromise){let s=[f.from_pretrained(this.model_id,{progress_callback:o}),y.from_pretrained(this.model_id,{progress_callback:o}),w.from_pretrained(this.model_id,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:o})];this.modelPromise=Promise.all(s).then(async a=>{this.tokenizer=a[0],this.processor=a[1],this.model=a[2];try{await this.model.generate({input_features:v([1,80,3e3],0),max_new_tokens:1})}catch(n){return console.warn("[Worker] Model warmup failed:",n),Promise.resolve()}return Promise.resolve()}).then(()=>{if(!this.tokenizer||!this.processor||!this.model)throw new Error("[Worker] Model components not initialized correctly after load.");return[this.tokenizer,this.processor,this.model]}).catch(a=>{throw console.error("[Worker] Model loading failed:",a),this.modelPromise=null,a})}return await this.modelPromise}};i(t,"model_id",null),i(t,"tokenizer",null),i(t,"processor",null),i(t,"model",null),i(t,"modelPromise",null);var k=!1;async function R({audio:e,language:o}){if(k){console.warn("[Worker] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e){console.warn("[Worker] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}k=!0,d=!1,console.log("[Worker] Transcribing audio..."),self.postMessage({status:"transcribing_start"});try{console.log("[Worker] Getting model instance...");let[r,s,a]=await t.getInstance(l=>{console.log("[Worker] AutomaticSpeechRecognitionPipeline Progress callback:",l)});console.log("[Worker] Model instance retrieved.");let n=null,c=0,u="",M=l=>{if(d){console.log("[Worker] Streamer callback cancelled.");return}n!=null||(n=performance.now()),u=l;let g=0;c++>0&&n&&(g=c/(performance.now()-n)*1e3);let b={status:"update",output:u,tps:g?parseFloat(g.toFixed(1)):0,numTokens:c};self.postMessage(b)};console.log("[Worker] Creating text streamer...");let _=new P(r,{skip_prompt:!0,skip_special_tokens:!0,callback_function:M});console.log("[Worker] Text streamer created.");let z=await s(e);if(console.log("[Worker] Processor inputs created."),await a.generate(h(W({},z),{max_new_tokens:L,language:o,streamer:_})),console.log("[Worker] Model generate completed."),d)console.log("[Worker] Transcription cancelled post-generation. Discarding result.");else{let l={status:"complete",output:u};console.log("[Worker] Sending complete message.",l),self.postMessage(l)}}catch(r){console.error("[Worker] Transcription failed:",r),self.postMessage({status:"error",data:\`Transcription failed: \${Error.isError(r)?r.message:"unknown error"}\`})}finally{k=!1}}console.log("[Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Worker] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Worker] Received invalid message format:",e.data);return}let{type:o,data:r}=e.data;switch(o){case"load":console.log("[Worker] Handling 'load' message.");try{console.log("[Worker] Attempting to get/load model instance..."),await t.getInstance(s=>{s.status==="progress"?self.postMessage({status:"loading",data:\`Loading model: \${s.progress.toFixed(0)}%\`}):(s.status==="done"||s.status==="ready")&&self.postMessage({status:"ready"})}),console.log("[Worker] Model instance loaded/retrieved successfully.")}catch(s){console.error("[Worker] Error during model loading on 'load' message:",s)}break;case"generate":r?(console.log("[Worker] Received 'generate' message with data:",r),await R(r)):console.warn("[Worker] 'generate' message received without data.");break;case"stop":console.log("[Worker] Received stop message."),d=!0;break;default:console.warn("[Worker] Received unknown message type:",o);break}});console.log("[Worker] Message listener set up. Initial script execution complete.");
-//# sourceMappingURL=worker_uKiry.ts.map
-`;
+  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-KEMUNR/worker_h7bgh.ts
+  var worker_h7bgh_default = 'var C=Object.defineProperty,F=Object.defineProperties;var x=Object.getOwnPropertyDescriptors;var V=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,A=Object.prototype.propertyIsEnumerable;var w=(e,r,o)=>r in e?C(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,T=(e,r)=>{for(var o in r||(r={}))H.call(r,o)&&w(e,o,r[o]);if(V)for(var o of V(r))A.call(r,o)&&w(e,o,r[o]);return e},M=(e,r)=>F(e,x(r));console.log("[Voice Worker] Code execution started.");var d=!1,m="onnx-community/whisper-base",l=null,i=null,s=null,t=null,n=!1,c=!1,W,G,v,P,y,f;async function z(){console.log("[Voice Worker][Init] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Voice Worker][Init] Transformers library imported successfully."),{AutoTokenizer:W,AutoProcessor:G,WhisperForConditionalGeneration:v,TextStreamer:P,full:y,env:f}=e,f.allowLocalModels=!1,f.backends.onnx.logLevel="info"}catch(e){throw console.error("[Voice Worker][Init] Failed to import Transformers library:",e),e}}async function S(e){console.log("[Voice Worker][Load] Loading model components..."),W||await z(),n=!1,c=!1;try{let r=[W.from_pretrained(m,{progress_callback:e}),G.from_pretrained(m,{progress_callback:e}),v.from_pretrained(m,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:e})],o=await Promise.all(r);if(console.log("[Voice Worker][Load] All model components loaded."),l=o[0],i=o[1],s=o[2],!l||!i||!s)throw new Error("[Voice Worker][Load] Model components not assigned correctly after load.");await E(),n=!0,console.log("[Voice Worker][Load] Model is loaded and warmed up.")}catch(r){throw console.error("[Voice Worker][Load] Model loading or warmup failed:",r),l=null,i=null,s=null,n=!1,c=!1,t=null,r}}async function E(){if(!s||!y){console.warn("[Voice Worker][Warmup] Cannot warmup model: Not loaded yet.");return}if(c){console.log("[Voice Worker][Warmup] Model already warmed up.");return}console.log("[Voice Worker][Warmup] Warming up model...");try{let o={input_features:y([1,80,3e3],0),max_new_tokens:1,generation_config:{}};await s.generate(o),c=!0,console.log("[Voice Worker][Warmup] Model warmup successful.")}catch(e){console.warn("[Voice Worker][Warmup] Model warmup failed:",e),c=!1}}var k=!1;async function L({audio:e,language:r}){if(k){console.warn("[Voice Worker][Generate] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e||e.length===0){console.warn("[Voice Worker][Generate] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}if(!n||!l||!i||!s){console.error("[Voice Worker][Generate] Model not ready for transcription."),self.postMessage({status:"error",data:"Model not ready."});return}k=!0,d=!1,console.log("[Voice Worker][Generate] Starting transcription process..."),self.postMessage({status:"transcribing_start"});try{console.log("[Voice Worker][Generate] Processing audio input...");let o=await i(e);console.log("[Voice Worker][Generate] Audio processed.");let a=null,u=0,g="",h=_=>{if(d){console.log("[Voice Worker][Generate] Streamer callback cancelled.");return}a!=null||(a=performance.now()),g=_;let p=0;u++>0&&a&&(p=u/(performance.now()-a)*1e3),self.postMessage({status:"update",output:g,tps:p?parseFloat(p.toFixed(1)):0,numTokens:u})};console.log("[Voice Worker][Generate] Creating text streamer...");let b=new P(l,{skip_prompt:!0,skip_special_tokens:!0,callback_function:h});console.log("[Voice Worker][Generate] Text streamer created."),console.log("[Voice Worker][Generate] Starting model generation..."),await s.generate(M(T({},o),{language:r,streamer:b})),console.log("[Voice Worker][Generate] Model generation finished."),d?console.log("[Voice Worker][Generate] Transcription cancelled post-generation. Discarding result."):(console.log("[Voice Worker][Generate] Transcription complete. Sending final message."),self.postMessage({status:"complete",output:g}))}catch(o){console.error("[Voice Worker][Generate] Transcription failed:",o),self.postMessage({status:"error",data:`Transcription failed: ${o instanceof Error?o.message:String(o)}`})}finally{console.log("[Voice Worker][Generate] Cleaning up transcription process."),k=!1}}console.log("[Voice Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Voice Worker][Handler] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Voice Worker][Handler] Received invalid message format:",e.data);return}let{type:r,data:o}=e.data;switch(r){case"load":if(console.log("[Voice Worker][Handler] Handling \'load\' message."),t){console.log("[Voice Worker][Handler] Model loading already in progress or completed.");try{await t,n&&self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] Previous load attempt failed."),n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}return}t=S(a=>{a.status==="progress"&&self.postMessage({status:"loading",data:`Loading: ${a.file} (${a.progress.toFixed(0)}%)`})});try{await t,self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] loadModel promise rejected:",a),t=null,n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}break;case"generate":o?(console.log("[Voice Worker][Handler] Handling \'generate\' message."),L(o)):(console.warn("[Voice Worker][Handler] \'generate\' message received without data."),self.postMessage({status:"error",data:"Generate request missing audio data."}));break;case"stop":console.log("[Voice Worker][Handler] Handling \'stop\' message."),d=!0,console.log("[Voice Worker][Handler] Cancellation requested flag set.");break;default:console.warn("[Voice Worker][Handler] Received unknown message type:",r);break}});console.log("[Voice Worker] Message listener set up. Initial script execution complete.");\n//# sourceMappingURL=worker_h7bgh.ts.map\n';
 
   // src/asr/manager.ts
-  var globalAsrStatus = "uninitialized";
-  var globalAsrMessage = "Click to initialize";
+  var managerState = "uninitialized";
+  var managerMessage = "Click mic to initialize";
   var worker = null;
-  var workerReady = false;
-  var workerLoading = false;
-  var workerError = null;
   var currentWorkerUrl = null;
-  function dispatchStatusUpdate(status, message) {
-    globalAsrStatus = status;
-    globalAsrMessage = message || (status === "ready" ? "ASR Ready" : status === "error" ? `ASR Error: ${workerError || "Unknown"}` : status === "loading" ? "Loading ASR model..." : status === "initializing" ? "Initializing ASR..." : status === "uninitialized" ? "Click mic to initialize" : "ASR status unknown");
-    console.log(`ASR Status: ${status}`, message ? `(${message})` : "");
+  function setManagerState(state, message) {
+    if (state === managerState && message === managerMessage) {
+      return;
+    }
+    console.log(
+      `[ASR Manager] State changing: ${managerState} -> ${state}`,
+      message ? `(${message})` : ""
+    );
+    managerState = state;
+    switch (state) {
+      case "uninitialized":
+        managerMessage = message || "Click mic to initialize";
+        break;
+      case "initializing":
+        managerMessage = message || "Initializing ASR...";
+        break;
+      case "loading_model":
+        managerMessage = message || "Loading ASR model...";
+        break;
+      case "warming_up":
+        managerMessage = message || "Preparing model...";
+        break;
+      case "ready":
+        managerMessage = message || "ASR Ready";
+        break;
+      case "error":
+        managerMessage = message || "ASR Error: Unknown";
+        break;
+      default:
+        console.warn(
+          "[ASR Manager] setManagerState called with unknown state:",
+          state
+        );
+        managerMessage = "ASR Status Unknown";
+    }
+    console.log(
+      `[ASR Manager] Dispatching asrStatusUpdate: { state: ${state}, message: ${managerMessage} }`
+    );
     const detail = {
-      status: status === "uninitialized" ? "initializing" : status,
-      message: globalAsrMessage
+      state,
+      // Use the AsrManagerState directly
+      message: managerMessage
     };
     document.dispatchEvent(
       new CustomEvent("asrStatusUpdate", { detail })
     );
   }
-  function getOrCreateWorker() {
-    console.log("[ASR Manager] getOrCreateWorker called.");
+  function cleanupWorker(errorMessage) {
+    console.warn(
+      `[ASR Manager] Cleaning up worker. Error: ${errorMessage || "None"}`
+    );
+    if (worker) {
+      worker.terminate();
+      worker = null;
+    }
+    if (currentWorkerUrl) {
+      URL.revokeObjectURL(currentWorkerUrl);
+      currentWorkerUrl = null;
+    }
+    setManagerState(errorMessage ? "error" : "uninitialized", errorMessage);
+  }
+  function createWorker() {
+    console.log("[ASR Manager] createWorker called.");
     if (worker) {
       console.warn(
-        "[ASR Manager] getOrCreateWorker called when worker already exists."
+        "[ASR Manager] createWorker called when worker already exists."
       );
-      return worker;
+      return true;
     }
-    if (workerLoading) {
+    if (managerState !== "uninitialized" && managerState !== "error") {
       console.warn(
-        "[ASR Manager] getOrCreateWorker called while already loading."
+        `[ASR Manager] createWorker called in unexpected state: ${managerState}`
       );
-      return null;
-    }
-    if (workerError) {
-      dispatchStatusUpdate("error", workerError);
-      return null;
+      return false;
     }
     if (!navigator.gpu) {
-      console.error(
-        "[ASR Manager] getOrCreateWorker called but WebGPU not supported."
-      );
-      workerError = "WebGPU not supported";
-      dispatchStatusUpdate("error", workerError);
-      return null;
+      console.error("[ASR Manager] createWorker: WebGPU not supported.");
+      setManagerState("error", "WebGPU not supported");
+      return false;
     }
-    workerLoading = true;
-    console.log("[ASR Manager] Attempting to create worker...");
-    dispatchStatusUpdate("loading", "Creating ASR Worker...");
+    setManagerState("initializing", "Creating ASR Worker...");
     try {
       if (currentWorkerUrl) {
         URL.revokeObjectURL(currentWorkerUrl);
         currentWorkerUrl = null;
       }
-      worker = fromScriptText(worker_uKiry_default, {});
+      worker = fromScriptText(worker_h7bgh_default, {});
+      currentWorkerUrl = worker.objectURL;
       worker.onmessage = (e) => {
         const { status, data, ...rest } = e.data;
         console.log("[ASR Manager] Received message from worker:", e.data);
         switch (status) {
           case "loading":
-            dispatchStatusUpdate("loading", data);
+            setManagerState("loading_model", data || "Loading model...");
             break;
           case "ready":
-            workerReady = true;
-            workerLoading = false;
-            workerError = null;
-            dispatchStatusUpdate("ready");
+            setManagerState("ready");
             break;
           case "error":
             console.error(
               "[ASR Manager] Received error status from Worker:",
               data
             );
-            workerError = data || "Unknown worker error";
-            workerLoading = false;
-            workerReady = false;
-            dispatchStatusUpdate("error", workerError);
-            worker?.terminate();
-            worker = null;
-            if (currentWorkerUrl) {
-              URL.revokeObjectURL(currentWorkerUrl);
-              currentWorkerUrl = null;
-            }
+            cleanupWorker(data || "Unknown worker error");
             break;
-          default:
+          case "transcribing_start":
+          case "update":
+          case "complete":
             document.dispatchEvent(
               new CustomEvent("asrResult", {
                 detail: { status, ...rest, data }
               })
+            );
+            break;
+          default:
+            console.warn(
+              "[ASR Manager] Received unknown status from worker:",
+              status
             );
             break;
         }
@@ -132,87 +164,58 @@
           err.message,
           err
         );
-        workerError = err.message || "Unhandled worker error";
-        workerLoading = false;
-        workerReady = false;
-        dispatchStatusUpdate("error", `Worker failed: ${workerError}`);
-        worker?.terminate();
-        worker = null;
-        if (currentWorkerUrl) {
-          URL.revokeObjectURL(currentWorkerUrl);
-          currentWorkerUrl = null;
-        }
+        cleanupWorker(err.message || "Unhandled worker error");
       };
       console.log(
         "[ASR Manager] Worker instance created, sending initial load message."
       );
       const initialMessage = { type: "load" };
       worker.postMessage(initialMessage);
+      return true;
     } catch (error) {
       console.error("[ASR Manager] Failed to instantiate worker:", error);
-      workerError = `Failed to create worker: ${error.message || error}`;
-      workerLoading = false;
-      dispatchStatusUpdate("error", workerError);
-      worker = null;
-      if (currentWorkerUrl) {
-        URL.revokeObjectURL(currentWorkerUrl);
-        currentWorkerUrl = null;
-      }
+      cleanupWorker(`Failed to create worker: ${error.message || error}`);
+      return false;
     }
-    return worker;
   }
   function initializeASRSystem() {
     console.log(
       "[ASR Manager] initializeASRSystem called (passive initialization)."
     );
+    if (managerState !== "uninitialized") {
+      console.log("[ASR Manager] Already initialized or initializing.");
+      return;
+    }
     if (!navigator.gpu) {
       console.warn("[ASR Manager] WebGPU not supported. ASR will be disabled.");
-      workerError = "WebGPU not supported";
-      dispatchStatusUpdate("error", workerError);
+      setManagerState("error", "WebGPU not supported");
     } else {
       console.log(
-        "[ASR Manager] WebGPU supported. ASR is ready to be loaded on demand."
+        "[ASR Manager] WebGPU supported. ASR state remains 'uninitialized'."
       );
-      if (globalAsrStatus !== "error") {
-        dispatchStatusUpdate("uninitialized");
-      }
     }
   }
   function triggerASRInitialization() {
-    console.log("[ASR Manager] triggerASRInitialization called.");
-    if (globalAsrStatus === "uninitialized" && !workerError) {
-      console.log(
-        "[ASR Manager] ASR is uninitialized, proceeding to load worker."
-      );
-      if (!navigator.gpu) {
-        console.error(
-          "[ASR Manager] Triggered initialization but WebGPU not supported."
-        );
-        workerError = "WebGPU not supported";
-        dispatchStatusUpdate("error", workerError);
-        return;
-      }
-      getOrCreateWorker();
-    } else if (workerLoading) {
-      console.log("[ASR Manager] Initialization already in progress.");
-    } else if (workerReady) {
-      console.log("[ASR Manager] ASR already initialized and ready.");
-    } else if (workerError) {
-      console.log(
-        "[ASR Manager] Cannot initialize due to previous error:",
-        workerError
-      );
-      dispatchStatusUpdate("error", workerError);
+    console.log(
+      "[ASR Manager] triggerASRInitialization called. Current state:",
+      managerState
+    );
+    if (managerState === "uninitialized" || managerState === "error") {
+      console.log("[ASR Manager] Triggering worker creation...");
+      createWorker();
     } else {
-      console.warn(
-        "[ASR Manager] triggerASRInitialization called in unexpected state:",
-        globalAsrStatus
+      console.log(
+        "[ASR Manager] Initialization trigger ignored, state is:",
+        managerState
       );
     }
   }
   function requestTranscription(audioData, language) {
-    console.log("[ASR Manager] requestTranscription called.");
-    if (isWorkerReady() && worker) {
+    console.log(
+      "[ASR Manager] requestTranscription called. Current state:",
+      managerState
+    );
+    if (managerState === "ready" && worker) {
       console.log("[ASR Manager] Worker is ready, posting generate message.");
       const message = {
         type: "generate",
@@ -222,46 +225,30 @@
         }
       };
       worker.postMessage(message);
-    } else if (!worker) {
-      console.error(
-        "[ASR Manager] Transcription requested, but worker does not exist."
-      );
-      dispatchStatusUpdate("error", "Worker instance missing");
-    } else if (workerLoading) {
-      console.warn(
-        "[ASR Manager] Transcription requested, but worker is still loading."
-      );
-    } else if (workerError) {
-      console.error(
-        "[ASR Manager] Transcription requested, but worker is in error state:",
-        workerError
-      );
-      dispatchStatusUpdate("error", workerError);
     } else {
       console.warn(
-        "[ASR Manager] Transcription requested, but worker is not ready for unknown reasons."
+        `[ASR Manager] Transcription requested but manager state is '${managerState}'. Ignoring.`
       );
+      if (!worker) {
+        console.error(
+          "[ASR Manager] Worker instance is null, cannot transcribe."
+        );
+      }
     }
   }
   function isWorkerReady() {
-    return !!worker && workerReady && !workerLoading && !workerError;
+    return managerState === "ready";
   }
-  function stopWorkerTranscription() {
-    if (worker && workerReady) {
-      console.log("[ASR Manager] Sending stop message to worker.");
-      const stopMessage = { type: "stop" };
-      worker.postMessage(stopMessage);
-    } else {
-      console.warn(
-        "[ASR Manager] Cannot send stop message: Worker not ready or doesn't exist."
-      );
-    }
+  function getManagerState() {
+    return managerState;
+  }
+  function getManagerMessage() {
+    return managerMessage;
   }
 
   // src/config.ts
   var HUGGING_FACE_TRANSFORMERS_VERSION = "3.5.0";
   var TARGET_SAMPLE_RATE = 16e3;
-  var ASR_LANGUAGE = "english";
 
   // src/ui/dom-selectors.ts
   var DOM_SELECTORS = {
@@ -312,8 +299,410 @@
     }
   }
 
-  // _tpkppiz7t:/Users/mika/experiments/cursor-voice/src/styles/styles.css
-  var styles_default = '.sv-wrap {\n  width: 0;\n  height: 24px;\n  opacity: 0;\n  overflow: hidden;\n  transition: width 0.3s ease, opacity 0.3s ease;\n  margin-right: 2px;\n  border-radius: 4px;\n  vertical-align: middle;\n  display: inline-block;\n  position: relative;\n  mask-image: linear-gradient(\n    to right,\n    transparent 0,\n    black 10px,\n    black calc(100% - 10px),\n    transparent 100%\n  );\n}\n.mic-btn {\n  cursor: pointer;\n  padding: 4px;\n  border-radius: 50%;\n  transition: background 0.2s, color 0.2s;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  vertical-align: middle;\n  position: relative;\n  color: #888;\n}\n.mic-btn:hover {\n  background: rgba(0, 0, 0, 0.05);\n  color: #555;\n}\n.mic-btn.active {\n  color: #e66;\n  background: rgba(255, 100, 100, 0.1);\n}\n.mic-btn.transcribing {\n  color: #0cf;\n  background: rgba(0, 200, 255, 0.1);\n}\n.mic-btn.disabled {\n  cursor: not-allowed;\n  color: #bbb;\n  background: transparent !important;\n}\n@keyframes sv-spin {\n  from {\n    transform: rotate(0);\n  }\n  to {\n    transform: rotate(360deg);\n  }\n}\n.mic-spinner {\n  width: 12px;\n  height: 12px;\n  border: 2px solid rgba(0, 0, 0, 0.2);\n  border-top-color: #0cf;\n  border-radius: 50%;\n  animation: sv-spin 1s linear infinite;\n}\n.mic-btn.disabled .mic-spinner {\n  border-top-color: #ccc;\n}\n.mic-btn.transcribing .mic-spinner {\n  border-top-color: #0cf;\n}\n.mic-btn .status-tooltip {\n  visibility: hidden;\n  width: 120px;\n  background-color: #555;\n  color: #fff;\n  text-align: center;\n  border-radius: 6px;\n  padding: 5px 3px;\n  position: absolute;\n  z-index: 1;\n  bottom: 125%;\n  left: 50%;\n  margin-left: -60px;\n  opacity: 0;\n  transition: opacity 0.3s;\n  font-size: 10px;\n}\n.mic-btn .status-tooltip::after {\n  content: "";\n  position: absolute;\n  top: 100%;\n  left: 50%;\n  margin-left: -5px;\n  border-width: 5px;\n  border-style: solid;\n  border-color: #555 transparent transparent transparent;\n}\n.mic-btn:hover .status-tooltip,\n.mic-btn.disabled .status-tooltip {\n  visibility: visible;\n  opacity: 1;\n}\n/* Styles for the cancel button - mimicking mic-btn but red */\n.sv-cancel-btn {\n  cursor: pointer;\n  padding: 4px;\n  border-radius: 50%;\n  transition: background 0.2s, color 0.2s;\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  vertical-align: middle;\n  color: #e66;\n  margin-right: 2px;\n}\n.sv-cancel-btn:hover {\n  background: rgba(255, 100, 100, 0.1);\n  color: #c33; /* Darker red on hover */\n}\n/* Styles for transcribing state controls */\n.transcribe-controls {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 4px;\n}\n.stop-btn-style {\n  color: #e66;\n  cursor: pointer;\n  font-size: 10px;\n}\n';
+  // src/ui/context-menu.ts
+  var LOCAL_STORAGE_KEY = "asr_selected_language";
+  var CONTEXT_MENU_ID = "asr-language-context-menu";
+  var SUPPORTED_LANGUAGES = [
+    { code: "en", name: "English" },
+    { code: "zh", name: "Chinese" },
+    { code: "de", name: "German" },
+    { code: "es", name: "Spanish" },
+    { code: "ru", name: "Russian" },
+    { code: "ko", name: "Korean" },
+    { code: "fr", name: "French" },
+    { code: "ja", name: "Japanese" },
+    { code: "pt", name: "Portuguese" },
+    { code: "tr", name: "Turkish" },
+    { code: "pl", name: "Polish" },
+    { code: "ca", name: "Catalan" },
+    { code: "nl", name: "Dutch" },
+    { code: "ar", name: "Arabic" },
+    { code: "sv", name: "Swedish" },
+    { code: "it", name: "Italian" },
+    { code: "id", name: "Indonesian" },
+    { code: "hi", name: "Hindi" },
+    { code: "fi", name: "Finnish" },
+    { code: "vi", name: "Vietnamese" },
+    { code: "he", name: "Hebrew" },
+    { code: "uk", name: "Ukrainian" },
+    { code: "el", name: "Greek" },
+    { code: "ms", name: "Malay" },
+    { code: "cs", name: "Czech" },
+    { code: "ro", name: "Romanian" },
+    { code: "da", name: "Danish" },
+    { code: "hu", name: "Hungarian" },
+    { code: "ta", name: "Tamil" },
+    { code: "no", name: "Norwegian" },
+    { code: "th", name: "Thai" },
+    { code: "ur", name: "Urdu" },
+    { code: "hr", name: "Croatian" },
+    { code: "bg", name: "Bulgarian" },
+    { code: "lt", name: "Lithuanian" },
+    { code: "la", name: "Latin" },
+    { code: "mi", name: "Maori" },
+    { code: "ml", name: "Malayalam" },
+    { code: "cy", name: "Welsh" },
+    { code: "sk", name: "Slovak" },
+    { code: "te", name: "Telugu" },
+    { code: "fa", name: "Persian" },
+    { code: "lv", name: "Latvian" },
+    { code: "bn", name: "Bengali" },
+    { code: "sr", name: "Serbian" },
+    { code: "az", name: "Azerbaijani" },
+    { code: "sl", name: "Slovenian" },
+    { code: "kn", name: "Kannada" },
+    { code: "et", name: "Estonian" },
+    { code: "mk", name: "Macedonian" },
+    { code: "br", name: "Breton" },
+    { code: "eu", name: "Basque" },
+    { code: "is", name: "Icelandic" },
+    { code: "hy", name: "Armenian" },
+    { code: "ne", name: "Nepali" },
+    { code: "mn", name: "Mongolian" },
+    { code: "bs", name: "Bosnian" },
+    { code: "kk", name: "Kazakh" },
+    { code: "sq", name: "Albanian" },
+    { code: "sw", name: "Swahili" },
+    { code: "gl", name: "Galician" },
+    { code: "mr", name: "Marathi" },
+    { code: "pa", name: "Punjabi" },
+    { code: "si", name: "Sinhala" },
+    { code: "km", name: "Khmer" },
+    { code: "sn", name: "Shona" },
+    { code: "yo", name: "Yoruba" },
+    { code: "so", name: "Somali" },
+    { code: "af", name: "Afrikaans" },
+    { code: "oc", name: "Occitan" },
+    { code: "ka", name: "Georgian" },
+    { code: "be", name: "Belarusian" },
+    { code: "tg", name: "Tajik" },
+    { code: "sd", name: "Sindhi" },
+    { code: "gu", name: "Gujarati" },
+    { code: "am", name: "Amharic" },
+    { code: "yi", name: "Yiddish" },
+    { code: "lo", name: "Lao" },
+    { code: "uz", name: "Uzbek" },
+    { code: "fo", name: "Faroese" },
+    { code: "ht", name: "Haitian Creole" },
+    { code: "ps", name: "Pashto" },
+    { code: "tk", name: "Turkmen" },
+    { code: "nn", name: "Nynorsk" },
+    { code: "mt", name: "Maltese" },
+    { code: "sa", name: "Sanskrit" },
+    { code: "lb", name: "Luxembourgish" },
+    { code: "my", name: "Myanmar" },
+    { code: "bo", name: "Tibetan" },
+    { code: "tl", name: "Tagalog" },
+    { code: "mg", name: "Malagasy" },
+    { code: "as", name: "Assamese" },
+    { code: "tt", name: "Tatar" },
+    { code: "haw", name: "Hawaiian" },
+    { code: "ln", name: "Lingala" },
+    { code: "ha", name: "Hausa" },
+    { code: "ba", name: "Bashkir" },
+    { code: "jw", name: "Javanese" },
+    { code: "su", name: "Sundanese" }
+  ].toSorted((a, b) => a.name.localeCompare(b.name));
+  function getSelectedLanguage() {
+    try {
+      const storedLanguage = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (storedLanguage && SUPPORTED_LANGUAGES.some((lang) => lang.code === storedLanguage)) {
+        return storedLanguage;
+      }
+    } catch (error) {
+      console.error("Error reading language from localStorage:", error);
+    }
+    return "en";
+  }
+  function setSelectedLanguage(languageCode) {
+    try {
+      if (SUPPORTED_LANGUAGES.some((lang) => lang.code === languageCode)) {
+        localStorage.setItem(LOCAL_STORAGE_KEY, languageCode);
+        console.log(`ASR language set to: ${languageCode}`);
+      } else {
+        console.warn(`Attempted to set unsupported language: ${languageCode}`);
+      }
+    } catch (error) {
+      console.error("Error writing language to localStorage:", error);
+    }
+  }
+  function removeExistingContextMenu() {
+    const existingMenu = document.getElementById(CONTEXT_MENU_ID);
+    existingMenu?.remove();
+    document.removeEventListener("click", handleOutsideClick, true);
+  }
+  function handleOutsideClick(event) {
+    const menu = document.getElementById(CONTEXT_MENU_ID);
+    if (menu && !menu.contains(event.target)) {
+      removeExistingContextMenu();
+    }
+  }
+  function createLanguageContextMenu(targetElement, onSelect) {
+    removeExistingContextMenu();
+    const currentLanguage = getSelectedLanguage();
+    const menu = document.createElement("div");
+    menu.id = CONTEXT_MENU_ID;
+    menu.className = "asr-context-menu";
+    menu.style.position = "absolute";
+    menu.style.visibility = "hidden";
+    menu.style.top = "-10000px";
+    menu.style.left = "-10000px";
+    menu.style.zIndex = "10000";
+    const title = document.createElement("div");
+    title.className = "asr-context-menu-title";
+    title.textContent = "Select Language";
+    menu.appendChild(title);
+    SUPPORTED_LANGUAGES.forEach((lang) => {
+      const item = document.createElement("div");
+      item.className = "asr-context-menu-item";
+      item.textContent = lang.name;
+      item.dataset.langCode = lang.code;
+      if (lang.code === currentLanguage) {
+        item.classList.add("selected");
+      }
+      item.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const selectedCode = e.target.dataset.langCode;
+        if (selectedCode) {
+          onSelect(selectedCode);
+        }
+        removeExistingContextMenu();
+      });
+      menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth;
+    const menuHeight = menu.offsetHeight;
+    const targetRect = targetElement.getBoundingClientRect();
+    const verticalOffset = 5;
+    const finalTop = targetRect.top - menuHeight - verticalOffset + window.scrollY;
+    const finalLeft = targetRect.left + targetRect.width / 2 - menuWidth / 2 + window.scrollX;
+    menu.style.top = `${finalTop}px`;
+    menu.style.left = `${finalLeft}px`;
+    menu.style.visibility = "visible";
+    setTimeout(() => {
+      document.addEventListener("click", handleOutsideClick, true);
+    }, 0);
+  }
+
+  // _nq8jmdobf:/Users/mika/experiments/cursor-voice/src/styles/styles.css
+  var styles_default = `.sv-wrap {
+  width: 0;
+  height: 24px;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  margin-right: 2px;
+  border-radius: 4px;
+  vertical-align: middle;
+  display: inline-block;
+  position: relative;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 10px,
+    black calc(100% - 10px),
+    transparent 100%
+  );
+}
+.mic-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 10px;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  position: relative;
+  color: #888;
+}
+.mic-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #555;
+}
+.mic-btn.active {
+  color: #e66;
+  background: rgba(255, 100, 100, 0.1);
+}
+.mic-btn.transcribing {
+  color: #0cf;
+  background: rgba(0, 200, 255, 0.1);
+}
+.mic-btn.disabled {
+  cursor: not-allowed;
+  color: #bbb;
+  background: transparent !important;
+}
+@keyframes sv-spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mic-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #0cf;
+  border-radius: 10px;
+  animation: sv-spin 1s linear infinite;
+}
+.mic-btn.disabled .mic-spinner {
+  border-top-color: #ccc;
+}
+.mic-btn.transcribing .mic-spinner {
+  border-top-color: #0cf;
+}
+.mic-btn .status-tooltip {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 3px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.mic-btn .status-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+.mic-btn:hover .status-tooltip,
+.mic-btn.disabled .status-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+/* Styles for the cancel button - mimicking mic-btn but red */
+.sv-cancel-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: #e66;
+  margin-right: 2px;
+}
+.sv-cancel-btn:hover {
+  background: rgba(255, 100, 100, 0.1);
+  color: #c33; /* Darker red on hover */
+}
+/* Styles for transcribing state controls */
+.transcribe-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.stop-btn-style {
+  color: #e66;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+/* --- Context Menu Styles --- */
+.asr-context-menu {
+  position: absolute; /* Ensure position is set */
+  z-index: 10000; /* Ensure it's on top */
+  background-color: var(--vscode-menu-background, #252526);
+  border: 1px solid var(--vscode-menu-border, #3c3c3c);
+  color: var(--vscode-menu-foreground, #cccccc);
+  min-width: 150px;
+  max-width: 250px; /* Optional: Prevent excessive width */
+  max-height: 40vh; /* Limit height to 40% of viewport height */
+  overflow-y: auto; /* Enable vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  border-radius: 4px;
+  font-family: var(--vscode-font-family, Arial, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+.asr-context-menu-title {
+  padding: 4px 8px;
+  font-weight: bold;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--vscode-menu-separatorBackground, #454545);
+  margin-bottom: 4px;
+  pointer-events: none; /* Don't intercept clicks */
+}
+.asr-context-menu-item {
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.asr-context-menu-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, #04395e);
+  color: var(--vscode-menu-selectionForeground, #ffffff);
+}
+.asr-context-menu-item.selected {
+  font-weight: bold;
+  /* Optional: Add a checkmark or other indicator */
+  /* Example: Use a ::before pseudo-element */
+}
+.asr-context-menu-item.selected::before {
+  content: "\u2713 ";
+  margin-right: 4px;
+}
+
+/* --- Custom Scrollbar for Context Menu --- */
+.asr-context-menu::-webkit-scrollbar {
+  width: 6px; /* Thinner scrollbar */
+}
+
+.asr-context-menu::-webkit-scrollbar-track {
+  background: var(
+    --vscode-menu-background,
+    #252526
+  ); /* Match menu background */
+  border-radius: 3px;
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb {
+  background-color: var(
+    --vscode-scrollbarSlider-background,
+    #4d4d4d
+  ); /* Subtle thumb color */
+  border-radius: 3px;
+  border: 1px solid var(--vscode-menu-background, #252526); /* Creates a small border effect */
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(
+    --vscode-scrollbarSlider-hoverBackground,
+    #6b6b6b
+  ); /* Darker on hover */
+}
+
+/* Firefox scrollbar styling */
+.asr-context-menu {
+  scrollbar-width: thin; /* Use thin scrollbar */
+  scrollbar-color: var(--vscode-scrollbarSlider-background, #4d4d4d)
+    var(--vscode-menu-background, #252526); /* thumb track */
+}
+`;
 
   // src/ui/mic-button.ts
   var styleId = "fadein-width-bar-wave-styles";
@@ -327,115 +716,143 @@
   }
   function updateMicButtonState(button, newState, message = "") {
     if (!button) return;
-    const actualAsrStatus = globalAsrStatus;
-    const actualAsrMessage = globalAsrMessage;
+    const actualAsrState = getManagerState();
+    const actualAsrMessage = getManagerMessage();
     let effectiveState = newState;
     let displayMessage = message;
-    if (actualAsrStatus === "uninitialized") {
-      effectiveState = "uninitialized";
-      displayMessage = actualAsrMessage || "Click to load ASR";
-    } else if (actualAsrStatus === "initializing" || actualAsrStatus === "loading") {
-      effectiveState = "loading";
-      displayMessage = actualAsrMessage;
-    } else if (actualAsrStatus === "error") {
-      effectiveState = "disabled";
-      displayMessage = `ASR Error: ${actualAsrMessage}`;
-    } else if (actualAsrStatus !== "ready" && newState !== "transcribing") {
-      effectiveState = "disabled";
-      displayMessage = actualAsrMessage || "ASR not ready";
-    } else if (newState === "transcribing") {
-      effectiveState = "transcribing";
-      displayMessage = message || "Transcribing...";
-    } else if (newState === "recording") {
-      if (actualAsrStatus === "ready") {
-        effectiveState = "recording";
-        displayMessage = message || "Recording...";
-      } else {
+    switch (actualAsrState) {
+      case "uninitialized":
+        effectiveState = "uninitialized";
+        displayMessage = actualAsrMessage || "Click to initialize";
+        break;
+      case "initializing":
+      case "loading_model":
+      case "warming_up":
+        effectiveState = "loading";
+        displayMessage = actualAsrMessage;
+        break;
+      case "error":
+        effectiveState = "disabled";
+        displayMessage = `Error: ${actualAsrMessage}`;
+        break;
+      case "ready":
+        if (newState === "recording") {
+          effectiveState = "recording";
+          displayMessage = message || "Recording...";
+        } else if (newState === "transcribing") {
+          effectiveState = "transcribing";
+          displayMessage = message || "Transcribing...";
+        } else if (newState === "disabled") {
+          effectiveState = "disabled";
+          displayMessage = message || "Disabled";
+        } else {
+          effectiveState = "idle";
+          displayMessage = message;
+        }
+        break;
+      // If managerState is not one of the above, something is wrong, default to disabled?
+      // Or let the initial newState pass through? Let's default to disabled for safety.
+      default:
+        console.warn(
+          `[MicButton] Unexpected manager state: ${actualAsrState}, defaulting UI to disabled.`
+        );
         effectiveState = "disabled";
         displayMessage = actualAsrMessage || "ASR not ready";
-      }
-    } else {
-      effectiveState = "idle";
-      displayMessage = message || "Hold to Record, Release to Transcribe";
+    }
+    if ((effectiveState === "recording" || effectiveState === "transcribing") && actualAsrState !== "ready") {
+      console.warn(
+        `[MicButton] State mismatch: Requested ${effectiveState} but manager state is ${actualAsrState}. Forcing disabled.`
+      );
+      effectiveState = "disabled";
+      displayMessage = actualAsrMessage || "ASR not ready";
     }
     button.asrState = effectiveState === "uninitialized" || effectiveState === "loading" ? "idle" : effectiveState;
-    button.classList.remove("active", "transcribing", "disabled");
-    button.innerHTML = "";
-    let tooltip = button.querySelector(".status-tooltip");
-    if (!tooltip) {
-      tooltip = document.createElement("span");
-      tooltip.className = "status-tooltip";
-      button.appendChild(tooltip);
-    }
-    let iconClass = "";
-    let defaultTitle = "";
-    switch (effectiveState) {
-      case "recording":
-        button.classList.add("active");
-        iconClass = "codicon-primitive-square";
-        defaultTitle = displayMessage;
-        break;
-      case "transcribing":
-        button.classList.add("transcribing");
-        const transcribeControlContainer = document.createElement("div");
-        transcribeControlContainer.className = "transcribe-controls";
-        const spinnerT = document.createElement("div");
-        spinnerT.className = "mic-spinner";
-        transcribeControlContainer.appendChild(spinnerT);
-        const stopBtn = document.createElement("span");
-        stopBtn.className = "codicon codicon-x stop-transcription-btn stop-btn-style";
-        stopBtn.setAttribute("title", "Stop Transcription");
-        transcribeControlContainer.appendChild(stopBtn);
-        button.appendChild(transcribeControlContainer);
-        defaultTitle = displayMessage;
-        iconClass = "";
-        break;
-      case "loading":
-        button.classList.add("disabled");
-        const spinnerL = document.createElement("div");
-        spinnerL.className = "mic-spinner";
-        button.appendChild(spinnerL);
-        defaultTitle = displayMessage;
-        iconClass = "";
-        break;
-      case "disabled":
-        button.classList.add("disabled");
-        if (actualAsrStatus === "error") {
-          iconClass = "codicon-error";
-        } else {
-          iconClass = "codicon-mic-off";
-        }
-        defaultTitle = displayMessage;
-        break;
-      case "uninitialized":
-        iconClass = "codicon-mic";
-        defaultTitle = displayMessage;
-        break;
-      case "idle":
-      default:
-        iconClass = "codicon-mic";
-        defaultTitle = displayMessage;
-        break;
-    }
-    if (iconClass) {
-      const icon = document.createElement("span");
-      icon.className = `codicon ${iconClass} !text-[12px]`;
-      if (tooltip && tooltip.parentNode !== button) {
-        button.appendChild(icon);
-        button.appendChild(tooltip);
-      } else if (tooltip) {
-        button.insertBefore(icon, tooltip);
-      } else {
-        button.appendChild(icon);
+    const alreadyHasSpinner = !!button.querySelector(".mic-spinner");
+    const isStayingLoading = effectiveState === "loading" && alreadyHasSpinner;
+    if (!isStayingLoading) {
+      button.classList.remove("active", "transcribing", "disabled");
+      button.innerHTML = "";
+      const tooltip2 = document.createElement("span");
+      tooltip2.className = "status-tooltip";
+      button.appendChild(tooltip2);
+    } else {
+      let tooltip2 = button.querySelector(".status-tooltip");
+      if (!tooltip2) {
+        tooltip2 = document.createElement("span");
+        tooltip2.className = "status-tooltip";
+        button.appendChild(tooltip2);
       }
+    }
+    const tooltip = button.querySelector(".status-tooltip");
+    let iconClass = "";
+    let defaultTitle = displayMessage || "";
+    if (tooltip) {
+      tooltip.style.display = defaultTitle ? "block" : "none";
+    }
+    if (!isStayingLoading) {
+      switch (effectiveState) {
+        case "recording":
+          button.classList.add("active");
+          iconClass = "codicon-primitive-square";
+          break;
+        case "transcribing":
+          button.classList.add("transcribing");
+          const transcribeControlContainer = document.createElement("div");
+          transcribeControlContainer.className = "transcribe-controls";
+          const spinnerT = document.createElement("div");
+          spinnerT.className = "mic-spinner";
+          transcribeControlContainer.appendChild(spinnerT);
+          const stopBtn = document.createElement("span");
+          stopBtn.className = "codicon codicon-x stop-transcription-btn stop-btn-style";
+          stopBtn.setAttribute("title", "Stop Transcription");
+          transcribeControlContainer.appendChild(stopBtn);
+          button.appendChild(transcribeControlContainer);
+          iconClass = "";
+          break;
+        case "loading":
+          button.classList.add("disabled");
+          if (!button.querySelector(".mic-spinner")) {
+            const spinnerL = document.createElement("div");
+            spinnerL.className = "mic-spinner";
+            button.appendChild(spinnerL);
+          }
+          iconClass = "";
+          break;
+        case "disabled":
+          button.classList.add("disabled");
+          if (actualAsrState === "error") {
+            iconClass = "codicon-error";
+          } else {
+            iconClass = "codicon-mic-off";
+          }
+          break;
+        case "uninitialized":
+          iconClass = "codicon-mic";
+          break;
+        case "idle":
+        default:
+          iconClass = "codicon-mic";
+          break;
+      }
+      if (iconClass) {
+        const icon = document.createElement("span");
+        icon.className = `codicon ${iconClass} !text-[12px]`;
+        if (tooltip && tooltip.parentNode === button) {
+          button.insertBefore(icon, tooltip);
+        } else {
+          button.appendChild(icon);
+          if (tooltip && !button.contains(tooltip)) {
+            button.appendChild(tooltip);
+          }
+        }
+      }
+    } else {
+      button.classList.add("disabled");
     }
     if (tooltip) {
       tooltip.textContent = defaultTitle;
     }
     button.setAttribute("title", defaultTitle);
-    if (!button.querySelector(".status-tooltip") && tooltip) {
-      button.appendChild(tooltip);
-    }
   }
   function initWave(box) {
     if (box.dataset.waveInit) return;
@@ -493,9 +910,9 @@
     let isCancelled = false;
     updateMicButtonState(mic, "idle");
     const handleAsrStatusUpdate = (event) => {
-      updateMicButtonState(mic, mic.asrState || "idle");
       const customEvent = event;
-      console.log("ASR Status Update Received by Mic:", customEvent.detail);
+      console.log("[MicButton] ASR Status Update Received:", customEvent.detail);
+      updateMicButtonState(mic, mic.asrState || "idle");
     };
     document.addEventListener(
       "asrStatusUpdate",
@@ -575,7 +992,10 @@
       }
     }
     function startRecording() {
-      console.log("Attempting to start recording (ASR should be ready)...");
+      console.log(
+        "Attempting to start recording (ASR should be ready)...",
+        getManagerState()
+      );
       updateMicButtonState(mic, "recording");
       audioChunks = [];
       isCancelled = false;
@@ -585,7 +1005,7 @@
             "Mic state changed away from recording during getUserMedia, aborting."
           );
           ms.getTracks().forEach((track) => track.stop());
-          updateMicButtonState(mic, "idle", "Recording aborted");
+          updateMicButtonState(mic, "idle");
           return;
         }
         stream = ms;
@@ -631,7 +1051,7 @@
             if (isCancelled) {
               console.log("Recording was cancelled. Discarding audio chunks.");
               audioChunks = [];
-              updateMicButtonState(mic, "idle", "Recording cancelled");
+              updateMicButtonState(mic, "idle");
               isCancelled = false;
               return;
             }
@@ -641,16 +1061,18 @@
               return;
             }
             console.log("Processing recorded audio chunks...");
-            updateMicButtonState(mic, "transcribing", "Processing audio...");
+            updateMicButtonState(mic, "transcribing");
             const audioBlob = new Blob(audioChunks, {
               type: mediaRecorder?.mimeType || "audio/webm"
             });
             audioChunks = [];
             try {
               const float32Array = await processAudioBlob(audioBlob);
+              const currentLanguage = getSelectedLanguage();
+              console.log(`Requesting transcription in: ${currentLanguage}`);
               if (float32Array && isWorkerReady()) {
-                updateMicButtonState(mic, "transcribing", "Transcribing...");
-                requestTranscription(float32Array, ASR_LANGUAGE);
+                updateMicButtonState(mic, "transcribing");
+                requestTranscription(float32Array, currentLanguage);
               } else if (!float32Array) {
                 console.error("Audio processing failed.");
                 updateMicButtonState(mic, "idle", "Audio processing failed");
@@ -685,52 +1107,40 @@
         stopRecording(true);
       });
     }
-    mic.addEventListener("mousedown", (e) => {
+    mic.addEventListener("click", (e) => {
       if (e.button !== 0) return;
       if (chatInputContentEditable) {
         setCurrentAsrInstance({ mic, chatInputContentEditable });
       }
-      const status = globalAsrStatus;
-      console.log("Mousedown detected. ASR Status:", status);
-      if (status === "uninitialized") {
-        console.log("ASR uninitialized, triggering initialization...");
-        triggerASRInitialization();
-        updateMicButtonState(mic, "idle");
-      } else if (status === "ready") {
-        console.log("ASR ready, starting recording...");
-        startRecording();
-      } else if (status === "loading" || status === "initializing") {
-        console.log("ASR is currently loading/initializing. Please wait.");
-        updateMicButtonState(mic, "idle");
-      } else if (status === "error") {
-        console.warn("Cannot start recording, ASR is in error state.");
-        updateMicButtonState(mic, "idle");
-      } else {
-        console.log("Mousedown ignored in current state:", status);
-      }
-    });
-    mic.addEventListener("mouseup", (e) => {
-      if (e.button !== 0) return;
       if (mic.asrState === "recording") {
-        console.log("Mouseup detected while recording, stopping recording.");
         stopRecording();
-      } else {
-        console.log("Mouseup detected, but not in recording state.");
+        return;
       }
-    });
-    mic.addEventListener("mouseleave", (e) => {
-      if (e.buttons === 1 && mic.asrState === "recording") {
-        console.log("Mouse left while recording, cancelling.");
-        isCancelled = true;
-        stopRecording(true);
-      }
-    });
-    mic.addEventListener("click", (e) => {
-      if (e.target?.classList.contains("stop-transcription-btn")) {
-        e.stopPropagation();
-        console.log("Stop transcription button clicked.");
-        stopWorkerTranscription();
-        updateMicButtonState(mic, "idle", "Transcription stopped");
+      const managerState2 = getManagerState();
+      console.log("Mousedown detected. ASR State:", managerState2);
+      switch (managerState2) {
+        case "uninitialized":
+          console.log("ASR uninitialized, triggering initialization...");
+          triggerASRInitialization();
+          updateMicButtonState(mic, "idle", "Initializing...");
+          break;
+        case "ready":
+          console.log("ASR ready, starting recording...");
+          startRecording();
+          break;
+        case "initializing":
+        case "loading_model":
+        case "warming_up":
+          console.log("ASR is currently loading/initializing. Please wait.");
+          updateMicButtonState(mic, "idle");
+          break;
+        case "error":
+          console.warn("Cannot start recording, ASR is in error state.");
+          updateMicButtonState(mic, "idle");
+          break;
+        default:
+          console.log("Mousedown ignored in current state:", managerState2);
+          break;
       }
     });
     cancelBtn.addEventListener("click", (e) => {
@@ -742,14 +1152,22 @@
         stopRecording(true);
       }
     });
+    mic.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      console.log("Right-click detected on mic button.");
+      if (chatInputContentEditable && !getCurrentAsrInstance()) {
+        setCurrentAsrInstance({ mic, chatInputContentEditable });
+      }
+      createLanguageContextMenu(mic, (selectedLang) => {
+        setSelectedLanguage(selectedLang);
+      });
+    });
   }
   function setupMicButtonObserver() {
     const handleInitialStatus = (event) => {
       const customEvent = event;
-      console.log(
-        "Observer setup: Received initial ASR status",
-        customEvent.detail
-      );
+      const state = customEvent.detail.state;
+      console.log("Observer setup: Received initial ASR state", state);
       document.querySelectorAll(DOM_SELECTORS.fullInputBox).forEach((el) => {
         const mic = el.querySelector(".mic-btn");
         if (mic && mic.dataset.waveInit) {
@@ -838,47 +1256,73 @@
     initializeASRSystem();
     console.log("ASR system initialized");
     document.addEventListener("asrStatusUpdate", (e) => {
+      const event = e;
+      const managerState2 = event.detail.state;
+      const message = event.detail.message;
       console.log(
-        "[ASR] Received asrStatusUpdate event:",
-        e.detail
+        `[ASR] Received asrStatusUpdate: State=${managerState2}, Msg=${message}`
       );
-      const _event = e;
-      document.querySelectorAll(".mic-btn[data-asr-init]").forEach((btn) => updateMicButtonState(btn, btn.asrState || "idle"));
+      let targetMicState;
+      switch (managerState2) {
+        case "uninitialized":
+        case "ready":
+        case "error":
+          targetMicState = "idle";
+          break;
+        case "initializing":
+        case "loading_model":
+        case "warming_up":
+          targetMicState = "disabled";
+          break;
+        default:
+          console.warn(
+            "[ASR] Unhandled manager state in status listener:",
+            managerState2
+          );
+          targetMicState = "idle";
+      }
+      if (managerState2 === "error") {
+        console.error(
+          "[ASR System Error]:",
+          message || "Unknown ASR system error"
+        );
+      }
+      document.querySelectorAll(".mic-btn[data-asr-init]").forEach((btn) => {
+        if (btn.asrState !== targetMicState) {
+          updateMicButtonState(btn, targetMicState);
+        }
+      });
     });
     if (!window._asrGlobalHandlerAttached) {
       let globalAsrResultHandler = function(e) {
         const event = e;
         const { status, output = "", data } = event.detail;
-        console.warn("[ASR] Received asrResult event:", event.detail);
         const asrInstance = getCurrentAsrInstance();
         if (!asrInstance) return;
         const { mic: mic2, chatInputContentEditable: chatInputContentEditable2 } = asrInstance;
         const currentMicState = mic2.asrState;
-        console.warn("Current mic state:", currentMicState);
-        if (currentMicState === "transcribing") {
-          if (status === "update") {
-          } else if (status === "complete") {
-            updateReactInput(chatInputContentEditable2, output, false);
-            updateMicButtonState(mic2, "idle");
-            chatInputContentEditable2.focus();
-          } else if (status === "error") {
-            console.error("Transcription error:", data);
-            updateMicButtonState(
-              mic2,
-              "idle",
-              `Error: ${data || "Unknown transcription error"}`
-            );
-          } else if (status === "transcribing_start") {
+        if (status === "transcribing_start") {
+          updateMicButtonState(mic2, "transcribing");
+        } else if (status === "update") {
+          buffer += output;
+          if (currentMicState !== "transcribing") {
+            updateMicButtonState(mic2, "transcribing");
           }
-        } else if (currentMicState === "idle" && status === "error") {
+        } else if (status === "complete") {
+          updateReactInput(chatInputContentEditable2, buffer, false);
+          buffer = "";
+          updateMicButtonState(mic2, "idle");
+          chatInputContentEditable2.focus();
+        } else if (status === "error") {
+          console.error("Transcription error:", data);
           updateMicButtonState(
             mic2,
-            "disabled",
-            `ASR Error: ${data || globalAsrMessage}`
-            // Use specific error or global one
+            "idle",
+            `Error: ${data || "Unknown transcription error"}`
           );
         }
       };
+      let buffer = "";
       document.addEventListener("asrResult", globalAsrResultHandler);
       window._asrGlobalHandlerAttached = true;
     }

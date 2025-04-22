@@ -4,32 +4,12 @@ import type {
   WorkerResponse,
   AsrResultDetail,
   AsrManagerState,
+  NavigatorWithMaybeGPU,
 } from "../types";
 import { fromScriptText } from "@aidenlx/esbuild-plugin-inline-worker/utils";
 import WorkerCode from "worker:./worker.ts";
 
-// Define navigator with gpu property
-interface NavigatorWithGPU extends Navigator {
-  gpu?: {
-    requestAdapter: () => Promise<GPUAdapter | null>;
-  };
-}
-
-interface GPUAdapter {
-  requestDevice: () => Promise<GPUDevice>;
-}
-
-interface GPUDevice {
-  createCommandEncoder: () => GPUCommandEncoder;
-}
-
-interface GPUCommandEncoder {
-  finish: () => GPUCommandBuffer;
-}
-
-interface GPUCommandBuffer {}
-
-declare const navigator: NavigatorWithGPU;
+declare const navigator: NavigatorWithMaybeGPU;
 
 // --- Refactored ASR State Management ---
 let managerState: AsrManagerState = "uninitialized";
@@ -116,7 +96,9 @@ function cleanupWorker(errorMessage?: string) {
  * Creates the ASR worker instance and sets up listeners.
  * Should only be called internally.
  */
-function createWorker(): boolean {
+function createWorker(args?: { onReady?: () => void }): boolean {
+  const { onReady } = args || {};
+
   console.log("[ASR Manager] createWorker called.");
   if (worker) {
     console.warn(
@@ -159,6 +141,7 @@ function createWorker(): boolean {
         case "ready":
           // Worker signals model is loaded and warmed up
           setManagerState("ready");
+          onReady?.();
           break;
         case "error":
           console.error(
@@ -237,14 +220,16 @@ export function initializeASRSystem(): void {
  * Called by UI elements to trigger the actual ASR worker creation
  * and model loading if it hasn't happened yet.
  */
-export function triggerASRInitialization(): void {
+export function triggerASRInitialization(args?: {
+  onReady?: () => void;
+}): void {
   console.log(
     "[ASR Manager] triggerASRInitialization called. Current state:",
     managerState
   );
   if (managerState === "uninitialized" || managerState === "error") {
     console.log("[ASR Manager] Triggering worker creation...");
-    createWorker();
+    createWorker(args);
   } else {
     console.log(
       "[ASR Manager] Initialization trigger ignored, state is:",

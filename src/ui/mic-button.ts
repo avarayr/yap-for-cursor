@@ -19,6 +19,8 @@ import {
   setSelectedLanguage,
 } from "./context-menu";
 import { DOM_SELECTORS } from "./dom-selectors";
+import { registerHotkey } from "src/utils/hotkey";
+import { HOTKEYS } from "src/config";
 
 // --- Shared CSS Injection ---
 const styleId = "fadein-width-bar-wave-styles";
@@ -213,7 +215,6 @@ export function updateMicButtonState(
   if (tooltip) {
     tooltip.textContent = defaultTitle;
   }
-  button.setAttribute("title", defaultTitle);
 }
 
 // --- Initialization for each Mic Instance ---
@@ -408,8 +409,13 @@ export function initWave(box: HTMLElement): void {
 
   // --- startRecording: Now only called when ASR is ready ---
   function startRecording() {
-    // Assume we are in 'ready' state if this function is called.
+    // Check if the mic is already recording
+    if (mic.asrState === "recording") {
+      console.warn("Mic is already recording, ignoring startRecording call.");
+      return;
+    }
 
+    // Assume we are in 'ready' state if this function is called.
     console.log(
       "Attempting to start recording (ASR should be ready)...",
       getManagerState()
@@ -429,6 +435,7 @@ export function initWave(box: HTMLElement): void {
           updateMicButtonState(mic, "idle");
           return;
         }
+
         stream = ms;
         const AudioContext = window.AudioContext;
         if (!AudioContext) throw new Error("AudioContext not supported");
@@ -549,6 +556,29 @@ export function initWave(box: HTMLElement): void {
 
   // --- Event Listeners ---
 
+  registerHotkey(HOTKEYS.TOGGLE_RECORDING, () => {
+    const managerState = getManagerState();
+
+    if (managerState === "uninitialized") {
+      triggerASRInitialization({
+        onReady: startRecording,
+      });
+      return;
+    }
+
+    if (mic.asrState === "recording") {
+      console.warn("[Hotkey] Stopping recording...");
+      // If the mic is already recording, stop the recording
+      stopRecording();
+    } else if (mic.asrState === "idle" || mic.asrState === "disabled") {
+      console.warn("[Hotkey] Starting recording...");
+      // If the mic is idle, start the recording
+      startRecording();
+    } else {
+      console.warn("[Hotkey] Ignoring hotkey in current state:", mic.asrState);
+    }
+  });
+
   // Mousedown: Trigger initialization or start recording
   mic.addEventListener("click", (e: MouseEvent) => {
     if (e.button !== 0) return; // Only left click
@@ -571,7 +601,9 @@ export function initWave(box: HTMLElement): void {
     switch (managerState) {
       case "uninitialized":
         console.log("ASR uninitialized, triggering initialization...");
-        triggerASRInitialization();
+        triggerASRInitialization({
+          onReady: startRecording,
+        });
         updateMicButtonState(mic, "idle", "Initializing..."); // Update state (will show loading based on global status)
         break;
       case "ready":

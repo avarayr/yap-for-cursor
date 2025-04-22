@@ -23,4 +23,4 @@ await build({
   target: "esnext",
 });
 
-console.log(new Date(), "+ Build complete");
+console.log(new Date(), "Build complete");

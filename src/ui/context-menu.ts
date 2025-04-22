@@ -238,17 +238,37 @@ export function createLanguageContextMenu(
   const menuWidth = menu.offsetWidth;
   const menuHeight = menu.offsetHeight;
   const targetRect = targetElement.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const scrollY = window.scrollY;
+  const scrollX = window.scrollX;
 
-  // Calculate position: centered above the target element
-  const verticalOffset = 5; // Small gap above the button
-  const finalTop =
-    targetRect.top - menuHeight - verticalOffset + window.scrollY; // Adjust for scroll
-  const finalLeft =
-    targetRect.left + targetRect.width / 2 - menuWidth / 2 + window.scrollX; // Adjust for scroll
+  // Calculate potential positions
+  const verticalOffset = 5; // Small gap
+  const potentialTop = targetRect.top - menuHeight - verticalOffset;
+  const potentialBottom = targetRect.bottom + verticalOffset;
+  const finalLeft = targetRect.left + targetRect.width / 2 - menuWidth / 2;
+
+  let finalTop: number;
+
+  // Decide position: prefer top, but use bottom if top doesn't fit
+  if (potentialTop >= 0) {
+    // Fits above
+    finalTop = potentialTop;
+  } else if (potentialBottom + menuHeight <= viewportHeight) {
+    // Doesn't fit above, but fits below
+    finalTop = potentialBottom;
+  } else {
+    // Doesn't fit well either way, default to top (or could choose bottom)
+    // Let's choose bottom as it's less likely to be cut off at the very top
+    finalTop = potentialBottom;
+    // Optional: Add logic here to adjust if it still goes off-screen bottom
+    // e.g., finalTop = viewportHeight - menuHeight - verticalOffset;
+  }
 
   // Apply calculated position and make visible
-  menu.style.top = `${finalTop}px`;
-  menu.style.left = `${finalLeft}px`;
+  // Adjust for scroll position
+  menu.style.top = `${finalTop + scrollY}px`;
+  menu.style.left = `${finalLeft + scrollX}px`;
   menu.style.visibility = "visible";
 
   // Add a listener to close the menu when clicking outside

@@ -28,8 +28,8 @@
     return worker2;
   };
 
-  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-bguPew/worker_VbBdM.ts
-  var worker_VbBdM_default = 'var C=Object.defineProperty,F=Object.defineProperties;var x=Object.getOwnPropertyDescriptors;var V=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,A=Object.prototype.propertyIsEnumerable;var w=(e,r,o)=>r in e?C(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,T=(e,r)=>{for(var o in r||(r={}))H.call(r,o)&&w(e,o,r[o]);if(V)for(var o of V(r))A.call(r,o)&&w(e,o,r[o]);return e},M=(e,r)=>F(e,x(r));console.log("[Voice Worker] Code execution started.");var d=!1,m="onnx-community/whisper-base",l=null,i=null,s=null,t=null,n=!1,c=!1,W,G,v,P,y,f;async function z(){console.log("[Voice Worker][Init] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Voice Worker][Init] Transformers library imported successfully."),{AutoTokenizer:W,AutoProcessor:G,WhisperForConditionalGeneration:v,TextStreamer:P,full:y,env:f}=e,f.allowLocalModels=!1,f.backends.onnx.logLevel="info"}catch(e){throw console.error("[Voice Worker][Init] Failed to import Transformers library:",e),e}}async function S(e){console.log("[Voice Worker][Load] Loading model components..."),W||await z(),n=!1,c=!1;try{let r=[W.from_pretrained(m,{progress_callback:e}),G.from_pretrained(m,{progress_callback:e}),v.from_pretrained(m,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:e})],o=await Promise.all(r);if(console.log("[Voice Worker][Load] All model components loaded."),l=o[0],i=o[1],s=o[2],!l||!i||!s)throw new Error("[Voice Worker][Load] Model components not assigned correctly after load.");await E(),n=!0,console.log("[Voice Worker][Load] Model is loaded and warmed up.")}catch(r){throw console.error("[Voice Worker][Load] Model loading or warmup failed:",r),l=null,i=null,s=null,n=!1,c=!1,t=null,r}}async function E(){if(!s||!y){console.warn("[Voice Worker][Warmup] Cannot warmup model: Not loaded yet.");return}if(c){console.log("[Voice Worker][Warmup] Model already warmed up.");return}console.log("[Voice Worker][Warmup] Warming up model...");try{let o={input_features:y([1,80,3e3],0),max_new_tokens:1,generation_config:{}};await s.generate(o),c=!0,console.log("[Voice Worker][Warmup] Model warmup successful.")}catch(e){console.warn("[Voice Worker][Warmup] Model warmup failed:",e),c=!1}}var k=!1;async function L({audio:e,language:r}){if(k){console.warn("[Voice Worker][Generate] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e||e.length===0){console.warn("[Voice Worker][Generate] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}if(!n||!l||!i||!s){console.error("[Voice Worker][Generate] Model not ready for transcription."),self.postMessage({status:"error",data:"Model not ready."});return}k=!0,d=!1,console.log("[Voice Worker][Generate] Starting transcription process..."),self.postMessage({status:"transcribing_start"});try{console.log("[Voice Worker][Generate] Processing audio input...");let o=await i(e);console.log("[Voice Worker][Generate] Audio processed.");let a=null,u=0,g="",h=_=>{if(d){console.log("[Voice Worker][Generate] Streamer callback cancelled.");return}a!=null||(a=performance.now()),g=_;let p=0;u++>0&&a&&(p=u/(performance.now()-a)*1e3),self.postMessage({status:"update",output:g,tps:p?parseFloat(p.toFixed(1)):0,numTokens:u})};console.log("[Voice Worker][Generate] Creating text streamer...");let b=new P(l,{skip_prompt:!0,skip_special_tokens:!0,callback_function:h});console.log("[Voice Worker][Generate] Text streamer created."),console.log("[Voice Worker][Generate] Starting model generation..."),await s.generate(M(T({},o),{language:r,streamer:b})),console.log("[Voice Worker][Generate] Model generation finished."),d?console.log("[Voice Worker][Generate] Transcription cancelled post-generation. Discarding result."):(console.log("[Voice Worker][Generate] Transcription complete. Sending final message."),self.postMessage({status:"complete",output:g}))}catch(o){console.error("[Voice Worker][Generate] Transcription failed:",o),self.postMessage({status:"error",data:`Transcription failed: ${o instanceof Error?o.message:String(o)}`})}finally{console.log("[Voice Worker][Generate] Cleaning up transcription process."),k=!1}}console.log("[Voice Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Voice Worker][Handler] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Voice Worker][Handler] Received invalid message format:",e.data);return}let{type:r,data:o}=e.data;switch(r){case"load":if(console.log("[Voice Worker][Handler] Handling \'load\' message."),t){console.log("[Voice Worker][Handler] Model loading already in progress or completed.");try{await t,n&&self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] Previous load attempt failed."),n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}return}t=S(a=>{a.status==="progress"&&self.postMessage({status:"loading",data:`Loading: ${a.file} (${a.progress.toFixed(0)}%)`})});try{await t,self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] loadModel promise rejected:",a),t=null,n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}break;case"generate":o?(console.log("[Voice Worker][Handler] Handling \'generate\' message."),L(o)):(console.warn("[Voice Worker][Handler] \'generate\' message received without data."),self.postMessage({status:"error",data:"Generate request missing audio data."}));break;case"stop":console.log("[Voice Worker][Handler] Handling \'stop\' message."),d=!0,console.log("[Voice Worker][Handler] Cancellation requested flag set.");break;default:console.warn("[Voice Worker][Handler] Received unknown message type:",r);break}});console.log("[Voice Worker] Message listener set up. Initial script execution complete.");\n//# sourceMappingURL=worker_VbBdM.ts.map\n';
+  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-f4rGLq/worker_Ts3yi.ts
+  var worker_Ts3yi_default = 'var C=Object.defineProperty,F=Object.defineProperties;var x=Object.getOwnPropertyDescriptors;var V=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,A=Object.prototype.propertyIsEnumerable;var w=(e,r,o)=>r in e?C(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,T=(e,r)=>{for(var o in r||(r={}))H.call(r,o)&&w(e,o,r[o]);if(V)for(var o of V(r))A.call(r,o)&&w(e,o,r[o]);return e},M=(e,r)=>F(e,x(r));console.log("[Voice Worker] Code execution started.");var d=!1,m="onnx-community/whisper-base",l=null,i=null,s=null,t=null,n=!1,c=!1,W,G,v,P,y,f;async function z(){console.log("[Voice Worker][Init] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Voice Worker][Init] Transformers library imported successfully."),{AutoTokenizer:W,AutoProcessor:G,WhisperForConditionalGeneration:v,TextStreamer:P,full:y,env:f}=e,f.allowLocalModels=!1,f.backends.onnx.logLevel="info"}catch(e){throw console.error("[Voice Worker][Init] Failed to import Transformers library:",e),e}}async function S(e){console.log("[Voice Worker][Load] Loading model components..."),W||await z(),n=!1,c=!1;try{let r=[W.from_pretrained(m,{progress_callback:e}),G.from_pretrained(m,{progress_callback:e}),v.from_pretrained(m,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:e})],o=await Promise.all(r);if(console.log("[Voice Worker][Load] All model components loaded."),l=o[0],i=o[1],s=o[2],!l||!i||!s)throw new Error("[Voice Worker][Load] Model components not assigned correctly after load.");await E(),n=!0,console.log("[Voice Worker][Load] Model is loaded and warmed up.")}catch(r){throw console.error("[Voice Worker][Load] Model loading or warmup failed:",r),l=null,i=null,s=null,n=!1,c=!1,t=null,r}}async function E(){if(!s||!y){console.warn("[Voice Worker][Warmup] Cannot warmup model: Not loaded yet.");return}if(c){console.log("[Voice Worker][Warmup] Model already warmed up.");return}console.log("[Voice Worker][Warmup] Warming up model...");try{let o={input_features:y([1,80,3e3],0),max_new_tokens:1,generation_config:{}};await s.generate(o),c=!0,console.log("[Voice Worker][Warmup] Model warmup successful.")}catch(e){console.warn("[Voice Worker][Warmup] Model warmup failed:",e),c=!1}}var k=!1;async function L({audio:e,language:r}){if(k){console.warn("[Voice Worker][Generate] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e||e.length===0){console.warn("[Voice Worker][Generate] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}if(!n||!l||!i||!s){console.error("[Voice Worker][Generate] Model not ready for transcription."),self.postMessage({status:"error",data:"Model not ready."});return}k=!0,d=!1,console.log("[Voice Worker][Generate] Starting transcription process..."),self.postMessage({status:"transcribing_start"});try{console.log("[Voice Worker][Generate] Processing audio input...");let o=await i(e);console.log("[Voice Worker][Generate] Audio processed.");let a=null,u=0,g="",h=_=>{if(d){console.log("[Voice Worker][Generate] Streamer callback cancelled.");return}a!=null||(a=performance.now()),g=_;let p=0;u++>0&&a&&(p=u/(performance.now()-a)*1e3),self.postMessage({status:"update",output:g,tps:p?parseFloat(p.toFixed(1)):0,numTokens:u})};console.log("[Voice Worker][Generate] Creating text streamer...");let b=new P(l,{skip_prompt:!0,skip_special_tokens:!0,callback_function:h});console.log("[Voice Worker][Generate] Text streamer created."),console.log("[Voice Worker][Generate] Starting model generation..."),await s.generate(M(T({},o),{language:r,streamer:b})),console.log("[Voice Worker][Generate] Model generation finished."),d?console.log("[Voice Worker][Generate] Transcription cancelled post-generation. Discarding result."):(console.log("[Voice Worker][Generate] Transcription complete. Sending final message."),self.postMessage({status:"complete",output:g}))}catch(o){console.error("[Voice Worker][Generate] Transcription failed:",o),self.postMessage({status:"error",data:`Transcription failed: ${o instanceof Error?o.message:String(o)}`})}finally{console.log("[Voice Worker][Generate] Cleaning up transcription process."),k=!1}}console.log("[Voice Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Voice Worker][Handler] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Voice Worker][Handler] Received invalid message format:",e.data);return}let{type:r,data:o}=e.data;switch(r){case"load":if(console.log("[Voice Worker][Handler] Handling \'load\' message."),t){console.log("[Voice Worker][Handler] Model loading already in progress or completed.");try{await t,n&&self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] Previous load attempt failed."),n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}return}t=S(a=>{a.status==="progress"&&self.postMessage({status:"loading",data:`Loading: ${a.file} (${a.progress.toFixed(0)}%)`})});try{await t,self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] loadModel promise rejected:",a),t=null,n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}break;case"generate":o?(console.log("[Voice Worker][Handler] Handling \'generate\' message."),L(o)):(console.warn("[Voice Worker][Handler] \'generate\' message received without data."),self.postMessage({status:"error",data:"Generate request missing audio data."}));break;case"stop":console.log("[Voice Worker][Handler] Handling \'stop\' message."),d=!0,console.log("[Voice Worker][Handler] Cancellation requested flag set.");break;default:console.warn("[Voice Worker][Handler] Received unknown message type:",r);break}});console.log("[Voice Worker] Message listener set up. Initial script execution complete.");\n//# sourceMappingURL=worker_Ts3yi.ts.map\n';
 
   // src/asr/manager.ts
   var managerState = "uninitialized";
@@ -97,7 +97,8 @@
     }
     setManagerState(errorMessage ? "error" : "uninitialized", errorMessage);
   }
-  function createWorker() {
+  function createWorker(args) {
+    const { onReady } = args || {};
     console.log("[ASR Manager] createWorker called.");
     if (worker) {
       console.warn(
@@ -122,7 +123,7 @@
         URL.revokeObjectURL(currentWorkerUrl);
         currentWorkerUrl = null;
       }
-      worker = fromScriptText(worker_VbBdM_default, {});
+      worker = fromScriptText(worker_Ts3yi_default, {});
       currentWorkerUrl = worker.objectURL;
       worker.onmessage = (e) => {
         const { status, data, ...rest } = e.data;
@@ -133,6 +134,7 @@
             break;
           case "ready":
             setManagerState("ready");
+            onReady?.();
             break;
           case "error":
             console.error(
@@ -195,14 +197,14 @@
       );
     }
   }
-  function triggerASRInitialization() {
+  function triggerASRInitialization(args) {
     console.log(
       "[ASR Manager] triggerASRInitialization called. Current state:",
       managerState
     );
     if (managerState === "uninitialized" || managerState === "error") {
       console.log("[ASR Manager] Triggering worker creation...");
-      createWorker();
+      createWorker(args);
     } else {
       console.log(
         "[ASR Manager] Initialization trigger ignored, state is:",
@@ -249,6 +251,9 @@
   // src/config.ts
   var HUGGING_FACE_TRANSFORMERS_VERSION = "3.5.0";
   var TARGET_SAMPLE_RATE = 16e3;
+  var HOTKEYS = {
+    TOGGLE_RECORDING: "cmd+shift+y"
+  };
 
   // src/ui/dom-selectors.ts
   var DOM_SELECTORS = {
@@ -258,7 +263,7 @@
     buttonContainer: ".button-container.composer-button-area"
   };
 
-  // _l2fljkk8w:/Users/mika/experiments/cursor-voice/src/styles/styles.css
+  // _94xjvp156:/Users/mika/experiments/yap-for-cursor/src/styles/styles.css
   var styles_default = `.sv-wrap {
   width: 0;
   height: 24px;
@@ -693,15 +698,94 @@
     const menuWidth = menu.offsetWidth;
     const menuHeight = menu.offsetHeight;
     const targetRect = targetElement.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
     const verticalOffset = 5;
-    const finalTop = targetRect.top - menuHeight - verticalOffset + window.scrollY;
-    const finalLeft = targetRect.left + targetRect.width / 2 - menuWidth / 2 + window.scrollX;
-    menu.style.top = `${finalTop}px`;
-    menu.style.left = `${finalLeft}px`;
+    const potentialTop = targetRect.top - menuHeight - verticalOffset;
+    const potentialBottom = targetRect.bottom + verticalOffset;
+    const finalLeft = targetRect.left + targetRect.width / 2 - menuWidth / 2;
+    let finalTop;
+    if (potentialTop >= 0) {
+      finalTop = potentialTop;
+    } else if (potentialBottom + menuHeight <= viewportHeight) {
+      finalTop = potentialBottom;
+    } else {
+      finalTop = potentialBottom;
+    }
+    menu.style.top = `${finalTop + scrollY}px`;
+    menu.style.left = `${finalLeft + scrollX}px`;
     menu.style.visibility = "visible";
     setTimeout(() => {
       document.addEventListener("click", handleOutsideClick, true);
     }, 0);
+  }
+
+  // src/utils/hotkey.ts
+  var registeredHotkeys = /* @__PURE__ */ new Map();
+  function getHotkeyId(key, target) {
+    return `${key}:${target === document ? "document" : "element"}`;
+  }
+  function registerHotkey(key, callback, options = {}) {
+    const {
+      target = document,
+      preventDefault = true,
+      stopPropagation = true,
+      allowInInputs = true
+    } = options;
+    const keys = key.split("+").map((k) => k.trim().toLowerCase());
+    const mainKey = keys[keys.length - 1];
+    const modifiers = {
+      ctrl: keys.includes("ctrl") || keys.includes("control"),
+      alt: keys.includes("alt"),
+      shift: keys.includes("shift"),
+      meta: keys.includes("meta") || keys.includes("command") || keys.includes("cmd")
+    };
+    const hotkeyId = getHotkeyId(key, target);
+    if (registeredHotkeys.has(hotkeyId)) {
+      const existingRegistration = registeredHotkeys.get(hotkeyId);
+      existingRegistration.unregister();
+    }
+    const handler = (event) => {
+      if (!allowInInputs && isInputElement(event.target)) {
+        return;
+      }
+      const keyMatch = event.key.toLowerCase() === mainKey.toLowerCase();
+      const ctrlMatch = event.ctrlKey === modifiers.ctrl;
+      const altMatch = event.altKey === modifiers.alt;
+      const shiftMatch = event.shiftKey === modifiers.shift;
+      const metaMatch = event.metaKey === modifiers.meta;
+      if (keyMatch && ctrlMatch && altMatch && shiftMatch && metaMatch) {
+        if (preventDefault) {
+          event.preventDefault();
+        }
+        if (stopPropagation) {
+          event.stopPropagation();
+        }
+        callback(event);
+      }
+    };
+    const unregister = () => {
+      target.removeEventListener("keydown", handler, {
+        capture: true
+      });
+      registeredHotkeys.delete(hotkeyId);
+    };
+    target.addEventListener("keydown", handler, {
+      capture: true
+    });
+    registeredHotkeys.set(hotkeyId, {
+      target,
+      handler,
+      unregister
+    });
+    return unregister;
+  }
+  function isInputElement(element) {
+    if (!element) return false;
+    const tagName = element.tagName.toLowerCase();
+    const isContentEditable = element.getAttribute("contenteditable") === "true";
+    return tagName === "input" || tagName === "textarea" || tagName === "select" || isContentEditable;
   }
 
   // src/ui/mic-button.ts
@@ -852,7 +936,6 @@
     if (tooltip) {
       tooltip.textContent = defaultTitle;
     }
-    button.setAttribute("title", defaultTitle);
   }
   function initWave(box) {
     if (box.dataset.waveInit) return;
@@ -992,6 +1075,10 @@
       }
     }
     function startRecording() {
+      if (mic.asrState === "recording") {
+        console.warn("Mic is already recording, ignoring startRecording call.");
+        return;
+      }
       console.log(
         "Attempting to start recording (ASR should be ready)...",
         getManagerState()
@@ -1107,6 +1194,24 @@
         stopRecording(true);
       });
     }
+    registerHotkey(HOTKEYS.TOGGLE_RECORDING, () => {
+      const managerState2 = getManagerState();
+      if (managerState2 === "uninitialized") {
+        triggerASRInitialization({
+          onReady: startRecording
+        });
+        return;
+      }
+      if (mic.asrState === "recording") {
+        console.warn("[Hotkey] Stopping recording...");
+        stopRecording();
+      } else if (mic.asrState === "idle" || mic.asrState === "disabled") {
+        console.warn("[Hotkey] Starting recording...");
+        startRecording();
+      } else {
+        console.warn("[Hotkey] Ignoring hotkey in current state:", mic.asrState);
+      }
+    });
     mic.addEventListener("click", (e) => {
       if (e.button !== 0) return;
       if (chatInputContentEditable) {
@@ -1121,7 +1226,9 @@
       switch (managerState2) {
         case "uninitialized":
           console.log("ASR uninitialized, triggering initialization...");
-          triggerASRInitialization();
+          triggerASRInitialization({
+            onReady: startRecording
+          });
           updateMicButtonState(mic, "idle", "Initializing...");
           break;
         case "ready":

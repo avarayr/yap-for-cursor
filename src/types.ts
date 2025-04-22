@@ -8,7 +8,7 @@ declare global {
 }
 
 // Define navigator with gpu property
-export interface NavigatorWithGPU extends Navigator {
+export interface NavigatorWithMaybeGPU extends Navigator {
   gpu?: {
     requestAdapter: () => Promise<GPUAdapter | null>;
   };

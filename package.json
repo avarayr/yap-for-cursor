@@ -1,5 +1,5 @@
 {
-  "name": "cursor-voice",
+  "name": "yap-for-cursor",
   "module": "src/main.ts",
   "type": "module",
   "scripts": {

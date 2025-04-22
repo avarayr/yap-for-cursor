@@ -1,19 +1,17 @@
+import styles from "inline:../styles/styles.css";
+import { getCurrentAsrInstance, setCurrentAsrInstance } from "../asr/instance";
 import {
   getManagerMessage,
   getManagerState,
   isWorkerReady,
   requestTranscription,
-  stopWorkerTranscription,
   triggerASRInitialization,
 } from "../asr/manager";
-import { getCurrentAsrInstance, setCurrentAsrInstance } from "../asr/instance";
 import { processAudioBlob } from "../audio/processing";
-import * as CONFIG from "../config";
 import type {
   AsrStatusUpdateDetail,
   MicButtonElement,
   MicButtonState,
-  AsrManagerState,
 } from "../types";
 import {
   createLanguageContextMenu,
@@ -21,7 +19,6 @@ import {
   setSelectedLanguage,
 } from "./context-menu";
 import { DOM_SELECTORS } from "./dom-selectors";
-import styles from "inline:../styles/styles.css";
 
 // --- Shared CSS Injection ---
 const styleId = "fadein-width-bar-wave-styles";

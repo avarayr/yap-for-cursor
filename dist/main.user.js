@@ -28,8 +28,8 @@
     return worker2;
   };
 
-  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-KEMUNR/worker_h7bgh.ts
-  var worker_h7bgh_default = 'var C=Object.defineProperty,F=Object.defineProperties;var x=Object.getOwnPropertyDescriptors;var V=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,A=Object.prototype.propertyIsEnumerable;var w=(e,r,o)=>r in e?C(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,T=(e,r)=>{for(var o in r||(r={}))H.call(r,o)&&w(e,o,r[o]);if(V)for(var o of V(r))A.call(r,o)&&w(e,o,r[o]);return e},M=(e,r)=>F(e,x(r));console.log("[Voice Worker] Code execution started.");var d=!1,m="onnx-community/whisper-base",l=null,i=null,s=null,t=null,n=!1,c=!1,W,G,v,P,y,f;async function z(){console.log("[Voice Worker][Init] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Voice Worker][Init] Transformers library imported successfully."),{AutoTokenizer:W,AutoProcessor:G,WhisperForConditionalGeneration:v,TextStreamer:P,full:y,env:f}=e,f.allowLocalModels=!1,f.backends.onnx.logLevel="info"}catch(e){throw console.error("[Voice Worker][Init] Failed to import Transformers library:",e),e}}async function S(e){console.log("[Voice Worker][Load] Loading model components..."),W||await z(),n=!1,c=!1;try{let r=[W.from_pretrained(m,{progress_callback:e}),G.from_pretrained(m,{progress_callback:e}),v.from_pretrained(m,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:e})],o=await Promise.all(r);if(console.log("[Voice Worker][Load] All model components loaded."),l=o[0],i=o[1],s=o[2],!l||!i||!s)throw new Error("[Voice Worker][Load] Model components not assigned correctly after load.");await E(),n=!0,console.log("[Voice Worker][Load] Model is loaded and warmed up.")}catch(r){throw console.error("[Voice Worker][Load] Model loading or warmup failed:",r),l=null,i=null,s=null,n=!1,c=!1,t=null,r}}async function E(){if(!s||!y){console.warn("[Voice Worker][Warmup] Cannot warmup model: Not loaded yet.");return}if(c){console.log("[Voice Worker][Warmup] Model already warmed up.");return}console.log("[Voice Worker][Warmup] Warming up model...");try{let o={input_features:y([1,80,3e3],0),max_new_tokens:1,generation_config:{}};await s.generate(o),c=!0,console.log("[Voice Worker][Warmup] Model warmup successful.")}catch(e){console.warn("[Voice Worker][Warmup] Model warmup failed:",e),c=!1}}var k=!1;async function L({audio:e,language:r}){if(k){console.warn("[Voice Worker][Generate] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e||e.length===0){console.warn("[Voice Worker][Generate] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}if(!n||!l||!i||!s){console.error("[Voice Worker][Generate] Model not ready for transcription."),self.postMessage({status:"error",data:"Model not ready."});return}k=!0,d=!1,console.log("[Voice Worker][Generate] Starting transcription process..."),self.postMessage({status:"transcribing_start"});try{console.log("[Voice Worker][Generate] Processing audio input...");let o=await i(e);console.log("[Voice Worker][Generate] Audio processed.");let a=null,u=0,g="",h=_=>{if(d){console.log("[Voice Worker][Generate] Streamer callback cancelled.");return}a!=null||(a=performance.now()),g=_;let p=0;u++>0&&a&&(p=u/(performance.now()-a)*1e3),self.postMessage({status:"update",output:g,tps:p?parseFloat(p.toFixed(1)):0,numTokens:u})};console.log("[Voice Worker][Generate] Creating text streamer...");let b=new P(l,{skip_prompt:!0,skip_special_tokens:!0,callback_function:h});console.log("[Voice Worker][Generate] Text streamer created."),console.log("[Voice Worker][Generate] Starting model generation..."),await s.generate(M(T({},o),{language:r,streamer:b})),console.log("[Voice Worker][Generate] Model generation finished."),d?console.log("[Voice Worker][Generate] Transcription cancelled post-generation. Discarding result."):(console.log("[Voice Worker][Generate] Transcription complete. Sending final message."),self.postMessage({status:"complete",output:g}))}catch(o){console.error("[Voice Worker][Generate] Transcription failed:",o),self.postMessage({status:"error",data:`Transcription failed: ${o instanceof Error?o.message:String(o)}`})}finally{console.log("[Voice Worker][Generate] Cleaning up transcription process."),k=!1}}console.log("[Voice Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Voice Worker][Handler] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Voice Worker][Handler] Received invalid message format:",e.data);return}let{type:r,data:o}=e.data;switch(r){case"load":if(console.log("[Voice Worker][Handler] Handling \'load\' message."),t){console.log("[Voice Worker][Handler] Model loading already in progress or completed.");try{await t,n&&self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] Previous load attempt failed."),n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}return}t=S(a=>{a.status==="progress"&&self.postMessage({status:"loading",data:`Loading: ${a.file} (${a.progress.toFixed(0)}%)`})});try{await t,self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] loadModel promise rejected:",a),t=null,n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}break;case"generate":o?(console.log("[Voice Worker][Handler] Handling \'generate\' message."),L(o)):(console.warn("[Voice Worker][Handler] \'generate\' message received without data."),self.postMessage({status:"error",data:"Generate request missing audio data."}));break;case"stop":console.log("[Voice Worker][Handler] Handling \'stop\' message."),d=!0,console.log("[Voice Worker][Handler] Cancellation requested flag set.");break;default:console.warn("[Voice Worker][Handler] Received unknown message type:",r);break}});console.log("[Voice Worker] Message listener set up. Initial script execution complete.");\n//# sourceMappingURL=worker_h7bgh.ts.map\n';
+  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-bguPew/worker_VbBdM.ts
+  var worker_VbBdM_default = 'var C=Object.defineProperty,F=Object.defineProperties;var x=Object.getOwnPropertyDescriptors;var V=Object.getOwnPropertySymbols;var H=Object.prototype.hasOwnProperty,A=Object.prototype.propertyIsEnumerable;var w=(e,r,o)=>r in e?C(e,r,{enumerable:!0,configurable:!0,writable:!0,value:o}):e[r]=o,T=(e,r)=>{for(var o in r||(r={}))H.call(r,o)&&w(e,o,r[o]);if(V)for(var o of V(r))A.call(r,o)&&w(e,o,r[o]);return e},M=(e,r)=>F(e,x(r));console.log("[Voice Worker] Code execution started.");var d=!1,m="onnx-community/whisper-base",l=null,i=null,s=null,t=null,n=!1,c=!1,W,G,v,P,y,f;async function z(){console.log("[Voice Worker][Init] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Voice Worker][Init] Transformers library imported successfully."),{AutoTokenizer:W,AutoProcessor:G,WhisperForConditionalGeneration:v,TextStreamer:P,full:y,env:f}=e,f.allowLocalModels=!1,f.backends.onnx.logLevel="info"}catch(e){throw console.error("[Voice Worker][Init] Failed to import Transformers library:",e),e}}async function S(e){console.log("[Voice Worker][Load] Loading model components..."),W||await z(),n=!1,c=!1;try{let r=[W.from_pretrained(m,{progress_callback:e}),G.from_pretrained(m,{progress_callback:e}),v.from_pretrained(m,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:e})],o=await Promise.all(r);if(console.log("[Voice Worker][Load] All model components loaded."),l=o[0],i=o[1],s=o[2],!l||!i||!s)throw new Error("[Voice Worker][Load] Model components not assigned correctly after load.");await E(),n=!0,console.log("[Voice Worker][Load] Model is loaded and warmed up.")}catch(r){throw console.error("[Voice Worker][Load] Model loading or warmup failed:",r),l=null,i=null,s=null,n=!1,c=!1,t=null,r}}async function E(){if(!s||!y){console.warn("[Voice Worker][Warmup] Cannot warmup model: Not loaded yet.");return}if(c){console.log("[Voice Worker][Warmup] Model already warmed up.");return}console.log("[Voice Worker][Warmup] Warming up model...");try{let o={input_features:y([1,80,3e3],0),max_new_tokens:1,generation_config:{}};await s.generate(o),c=!0,console.log("[Voice Worker][Warmup] Model warmup successful.")}catch(e){console.warn("[Voice Worker][Warmup] Model warmup failed:",e),c=!1}}var k=!1;async function L({audio:e,language:r}){if(k){console.warn("[Voice Worker][Generate] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e||e.length===0){console.warn("[Voice Worker][Generate] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}if(!n||!l||!i||!s){console.error("[Voice Worker][Generate] Model not ready for transcription."),self.postMessage({status:"error",data:"Model not ready."});return}k=!0,d=!1,console.log("[Voice Worker][Generate] Starting transcription process..."),self.postMessage({status:"transcribing_start"});try{console.log("[Voice Worker][Generate] Processing audio input...");let o=await i(e);console.log("[Voice Worker][Generate] Audio processed.");let a=null,u=0,g="",h=_=>{if(d){console.log("[Voice Worker][Generate] Streamer callback cancelled.");return}a!=null||(a=performance.now()),g=_;let p=0;u++>0&&a&&(p=u/(performance.now()-a)*1e3),self.postMessage({status:"update",output:g,tps:p?parseFloat(p.toFixed(1)):0,numTokens:u})};console.log("[Voice Worker][Generate] Creating text streamer...");let b=new P(l,{skip_prompt:!0,skip_special_tokens:!0,callback_function:h});console.log("[Voice Worker][Generate] Text streamer created."),console.log("[Voice Worker][Generate] Starting model generation..."),await s.generate(M(T({},o),{language:r,streamer:b})),console.log("[Voice Worker][Generate] Model generation finished."),d?console.log("[Voice Worker][Generate] Transcription cancelled post-generation. Discarding result."):(console.log("[Voice Worker][Generate] Transcription complete. Sending final message."),self.postMessage({status:"complete",output:g}))}catch(o){console.error("[Voice Worker][Generate] Transcription failed:",o),self.postMessage({status:"error",data:`Transcription failed: ${o instanceof Error?o.message:String(o)}`})}finally{console.log("[Voice Worker][Generate] Cleaning up transcription process."),k=!1}}console.log("[Voice Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Voice Worker][Handler] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Voice Worker][Handler] Received invalid message format:",e.data);return}let{type:r,data:o}=e.data;switch(r){case"load":if(console.log("[Voice Worker][Handler] Handling \'load\' message."),t){console.log("[Voice Worker][Handler] Model loading already in progress or completed.");try{await t,n&&self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] Previous load attempt failed."),n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}return}t=S(a=>{a.status==="progress"&&self.postMessage({status:"loading",data:`Loading: ${a.file} (${a.progress.toFixed(0)}%)`})});try{await t,self.postMessage({status:"ready"})}catch(a){console.error("[Voice Worker][Handler] loadModel promise rejected:",a),t=null,n||self.postMessage({status:"error",data:`Model initialization failed: ${a instanceof Error?a.message:String(a)}`})}break;case"generate":o?(console.log("[Voice Worker][Handler] Handling \'generate\' message."),L(o)):(console.warn("[Voice Worker][Handler] \'generate\' message received without data."),self.postMessage({status:"error",data:"Generate request missing audio data."}));break;case"stop":console.log("[Voice Worker][Handler] Handling \'stop\' message."),d=!0,console.log("[Voice Worker][Handler] Cancellation requested flag set.");break;default:console.warn("[Voice Worker][Handler] Received unknown message type:",r);break}});console.log("[Voice Worker] Message listener set up. Initial script execution complete.");\n//# sourceMappingURL=worker_VbBdM.ts.map\n';
 
   // src/asr/manager.ts
   var managerState = "uninitialized";
@@ -122,7 +122,7 @@
         URL.revokeObjectURL(currentWorkerUrl);
         currentWorkerUrl = null;
       }
-      worker = fromScriptText(worker_h7bgh_default, {});
+      worker = fromScriptText(worker_VbBdM_default, {});
       currentWorkerUrl = worker.objectURL;
       worker.onmessage = (e) => {
         const { status, data, ...rest } = e.data;
@@ -257,6 +257,225 @@
     fullInputBox: ".full-input-box",
     buttonContainer: ".button-container.composer-button-area"
   };
+
+  // _l2fljkk8w:/Users/mika/experiments/cursor-voice/src/styles/styles.css
+  var styles_default = `.sv-wrap {
+  width: 0;
+  height: 24px;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.3s ease, opacity 0.3s ease;
+  margin-right: 2px;
+  border-radius: 4px;
+  vertical-align: middle;
+  display: inline-block;
+  position: relative;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 10px,
+    black calc(100% - 10px),
+    transparent 100%
+  );
+}
+.mic-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 10px;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  position: relative;
+  color: #888;
+}
+.mic-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #555;
+}
+.mic-btn.active {
+  color: #e66;
+  background: rgba(255, 100, 100, 0.1);
+}
+.mic-btn.transcribing {
+  color: #0cf;
+  background: rgba(0, 200, 255, 0.1);
+}
+.mic-btn.disabled {
+  cursor: not-allowed;
+  color: #bbb;
+  background: transparent !important;
+}
+@keyframes sv-spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.mic-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-top-color: #0cf;
+  border-radius: 10px;
+  animation: sv-spin 1s linear infinite;
+}
+.mic-btn.disabled .mic-spinner {
+  border-top-color: #ccc;
+}
+.mic-btn.transcribing .mic-spinner {
+  border-top-color: #0cf;
+}
+.mic-btn .status-tooltip {
+  visibility: hidden;
+  width: 120px;
+  background-color: #555;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 3px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.mic-btn .status-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #555 transparent transparent transparent;
+}
+.mic-btn:hover .status-tooltip,
+.mic-btn.disabled .status-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+/* Styles for the cancel button - mimicking mic-btn but red */
+.sv-cancel-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: #e66;
+  margin-right: 2px;
+}
+.sv-cancel-btn:hover {
+  background: rgba(255, 100, 100, 0.1);
+  color: #c33; /* Darker red on hover */
+}
+/* Styles for transcribing state controls */
+.transcribe-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.stop-btn-style {
+  color: #e66;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+/* --- Context Menu Styles --- */
+.asr-context-menu {
+  position: absolute; /* Ensure position is set */
+  z-index: 10000; /* Ensure it's on top */
+  background-color: var(--vscode-menu-background, #252526);
+  border: 1px solid var(--vscode-menu-border, #3c3c3c);
+  color: var(--vscode-menu-foreground, #cccccc);
+  min-width: 150px;
+  max-width: 250px; /* Optional: Prevent excessive width */
+  max-height: 40vh; /* Limit height to 40% of viewport height */
+  overflow-y: auto; /* Enable vertical scrolling */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  border-radius: 4px;
+  font-family: var(--vscode-font-family, Arial, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+.asr-context-menu-title {
+  padding: 4px 8px;
+  font-weight: bold;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--vscode-menu-separatorBackground, #454545);
+  margin-bottom: 4px;
+  pointer-events: none; /* Don't intercept clicks */
+}
+.asr-context-menu-item {
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.asr-context-menu-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, #04395e);
+  color: var(--vscode-menu-selectionForeground, #ffffff);
+}
+.asr-context-menu-item.selected {
+  font-weight: bold;
+  /* Optional: Add a checkmark or other indicator */
+  /* Example: Use a ::before pseudo-element */
+}
+.asr-context-menu-item.selected::before {
+  content: "\u2713 ";
+  margin-right: 4px;
+}
+
+/* --- Custom Scrollbar for Context Menu --- */
+.asr-context-menu::-webkit-scrollbar {
+  width: 6px; /* Thinner scrollbar */
+}
+
+.asr-context-menu::-webkit-scrollbar-track {
+  background: var(
+    --vscode-menu-background,
+    #252526
+  ); /* Match menu background */
+  border-radius: 3px;
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb {
+  background-color: var(
+    --vscode-scrollbarSlider-background,
+    #4d4d4d
+  ); /* Subtle thumb color */
+  border-radius: 3px;
+  border: 1px solid var(--vscode-menu-background, #252526); /* Creates a small border effect */
+}
+
+.asr-context-menu::-webkit-scrollbar-thumb:hover {
+  background-color: var(
+    --vscode-scrollbarSlider-hoverBackground,
+    #6b6b6b
+  ); /* Darker on hover */
+}
+
+/* Firefox scrollbar styling */
+.asr-context-menu {
+  scrollbar-width: thin; /* Use thin scrollbar */
+  scrollbar-color: var(--vscode-scrollbarSlider-background, #4d4d4d)
+    var(--vscode-menu-background, #252526); /* thumb track */
+}
+`;
 
   // src/audio/processing.ts
   async function processAudioBlob(blob, targetSr = TARGET_SAMPLE_RATE) {
@@ -484,225 +703,6 @@
       document.addEventListener("click", handleOutsideClick, true);
     }, 0);
   }
-
-  // _nq8jmdobf:/Users/mika/experiments/cursor-voice/src/styles/styles.css
-  var styles_default = `.sv-wrap {
-  width: 0;
-  height: 24px;
-  opacity: 0;
-  overflow: hidden;
-  transition: width 0.3s ease, opacity 0.3s ease;
-  margin-right: 2px;
-  border-radius: 4px;
-  vertical-align: middle;
-  display: inline-block;
-  position: relative;
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    black 10px,
-    black calc(100% - 10px),
-    transparent 100%
-  );
-}
-.mic-btn {
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 10px;
-  transition: background 0.2s, color 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  position: relative;
-  color: #888;
-}
-.mic-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #555;
-}
-.mic-btn.active {
-  color: #e66;
-  background: rgba(255, 100, 100, 0.1);
-}
-.mic-btn.transcribing {
-  color: #0cf;
-  background: rgba(0, 200, 255, 0.1);
-}
-.mic-btn.disabled {
-  cursor: not-allowed;
-  color: #bbb;
-  background: transparent !important;
-}
-@keyframes sv-spin {
-  from {
-    transform: rotate(0);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-.mic-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(0, 0, 0, 0.2);
-  border-top-color: #0cf;
-  border-radius: 10px;
-  animation: sv-spin 1s linear infinite;
-}
-.mic-btn.disabled .mic-spinner {
-  border-top-color: #ccc;
-}
-.mic-btn.transcribing .mic-spinner {
-  border-top-color: #0cf;
-}
-.mic-btn .status-tooltip {
-  visibility: hidden;
-  width: 120px;
-  background-color: #555;
-  color: #fff;
-  text-align: center;
-  border-radius: 6px;
-  padding: 5px 3px;
-  position: absolute;
-  z-index: 1;
-  bottom: 125%;
-  left: 50%;
-  margin-left: -60px;
-  opacity: 0;
-  transition: opacity 0.3s;
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-.mic-btn .status-tooltip::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: #555 transparent transparent transparent;
-}
-.mic-btn:hover .status-tooltip,
-.mic-btn.disabled .status-tooltip {
-  visibility: visible;
-  opacity: 1;
-}
-/* Styles for the cancel button - mimicking mic-btn but red */
-.sv-cancel-btn {
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: background 0.2s, color 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
-  color: #e66;
-  margin-right: 2px;
-}
-.sv-cancel-btn:hover {
-  background: rgba(255, 100, 100, 0.1);
-  color: #c33; /* Darker red on hover */
-}
-/* Styles for transcribing state controls */
-.transcribe-controls {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-.stop-btn-style {
-  color: #e66;
-  cursor: pointer;
-  font-size: 10px;
-}
-
-/* --- Context Menu Styles --- */
-.asr-context-menu {
-  position: absolute; /* Ensure position is set */
-  z-index: 10000; /* Ensure it's on top */
-  background-color: var(--vscode-menu-background, #252526);
-  border: 1px solid var(--vscode-menu-border, #3c3c3c);
-  color: var(--vscode-menu-foreground, #cccccc);
-  min-width: 150px;
-  max-width: 250px; /* Optional: Prevent excessive width */
-  max-height: 40vh; /* Limit height to 40% of viewport height */
-  overflow-y: auto; /* Enable vertical scrolling */
-  overflow-x: hidden; /* Prevent horizontal scrolling */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  padding: 4px 0;
-  border-radius: 4px;
-  font-family: var(--vscode-font-family, Arial, sans-serif);
-  font-size: var(--vscode-font-size, 13px);
-}
-.asr-context-menu-title {
-  padding: 4px 8px;
-  font-weight: bold;
-  opacity: 0.7;
-  border-bottom: 1px solid var(--vscode-menu-separatorBackground, #454545);
-  margin-bottom: 4px;
-  pointer-events: none; /* Don't intercept clicks */
-}
-.asr-context-menu-item {
-  padding: 4px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.asr-context-menu-item:hover {
-  background-color: var(--vscode-menu-selectionBackground, #04395e);
-  color: var(--vscode-menu-selectionForeground, #ffffff);
-}
-.asr-context-menu-item.selected {
-  font-weight: bold;
-  /* Optional: Add a checkmark or other indicator */
-  /* Example: Use a ::before pseudo-element */
-}
-.asr-context-menu-item.selected::before {
-  content: "\u2713 ";
-  margin-right: 4px;
-}
-
-/* --- Custom Scrollbar for Context Menu --- */
-.asr-context-menu::-webkit-scrollbar {
-  width: 6px; /* Thinner scrollbar */
-}
-
-.asr-context-menu::-webkit-scrollbar-track {
-  background: var(
-    --vscode-menu-background,
-    #252526
-  ); /* Match menu background */
-  border-radius: 3px;
-}
-
-.asr-context-menu::-webkit-scrollbar-thumb {
-  background-color: var(
-    --vscode-scrollbarSlider-background,
-    #4d4d4d
-  ); /* Subtle thumb color */
-  border-radius: 3px;
-  border: 1px solid var(--vscode-menu-background, #252526); /* Creates a small border effect */
-}
-
-.asr-context-menu::-webkit-scrollbar-thumb:hover {
-  background-color: var(
-    --vscode-scrollbarSlider-hoverBackground,
-    #6b6b6b
-  ); /* Darker on hover */
-}
-
-/* Firefox scrollbar styling */
-.asr-context-menu {
-  scrollbar-width: thin; /* Use thin scrollbar */
-  scrollbar-color: var(--vscode-scrollbarSlider-background, #4d4d4d)
-    var(--vscode-menu-background, #252526); /* thumb track */
-}
-`;
 
   // src/ui/mic-button.ts
   var styleId = "fadein-width-bar-wave-styles";

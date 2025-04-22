@@ -1,8 +1,16 @@
-# <center><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Speaking%20Head.webp" alt="Speaking Head" width="128" height="128" /><br/> Yap For Cursor </center>
+# <p align="center"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/People/Speaking%20Head.webp" alt="Speaking Head" width="128" height="128" /><br/> Yap For Cursor </p>
 
 🗣️ Local, WebGPU-powered voice-to-text capabilities directly into the Cursor editor using the power of Hugging Face Transformers.
 
+
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/avarayr)
+
+
+
+
+https://github.com/user-attachments/assets/ea641fb8-00c8-4da8-b0b8-b6e11aac6478
+
+
 
 ## ✨ Features
 

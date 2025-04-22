@@ -2,15 +2,9 @@
 
 🗣️ Local, WebGPU-powered voice-to-text capabilities directly into the Cursor editor using the power of Hugging Face Transformers.
 
-
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/avarayr)
 
-
-
-
 https://github.com/user-attachments/assets/ea641fb8-00c8-4da8-b0b8-b6e11aac6478
-
-
 
 ## ✨ Features
 
@@ -83,6 +77,14 @@ This project injects custom JavaScript into Cursor via the `Custom CSS and JS Lo
 
 - ✅ **macOS**: (Apple Silicon & Intel) with WebGPU support.
 - ⚠️ **Windows/Linux:** Might work, but **requires WebGPU support** in the underlying browser/Electron version used by Cursor. Functionality isn't guaranteed. _Testing and feedback welcome!_
+
+---
+
+## Hotkeys:
+
+- `Cmd+Shift+Y` to toggle the transcription.
+
+(work in progress)
 
 ---
 

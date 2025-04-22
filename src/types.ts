@@ -65,7 +65,7 @@ export interface WorkerGenerateData {
 }
 
 export interface WorkerMessage {
-  type: "load" | "generate";
+  type: "load" | "generate" | "stop";
   data?: WorkerGenerateData; // Only present for 'generate' type
 }
 

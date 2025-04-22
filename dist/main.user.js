@@ -28,9 +28,9 @@
     return worker2;
   };
 
-  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-3BB94o/worker_9sNIU.ts
-  var worker_9sNIU_default = `var b=Object.defineProperty,x=Object.defineProperties;var C=Object.getOwnPropertyDescriptors;var T=Object.getOwnPropertySymbols;var G=Object.prototype.hasOwnProperty,E=Object.prototype.propertyIsEnumerable;var m=(e,o,r)=>o in e?b(e,o,{enumerable:!0,configurable:!0,writable:!0,value:r}):e[o]=r,W=(e,o)=>{for(var r in o||(o={}))G.call(o,r)&&m(e,r,o[r]);if(T)for(var r of T(o))E.call(o,r)&&m(e,r,o[r]);return e},h=(e,o)=>x(e,C(o));var i=(e,o,r)=>m(e,typeof o!="symbol"?o+"":o,r);console.log("[Worker] Code execution started.");var k,y,w,P,v,g;async function A(){console.log("[Worker] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Worker] Transformers library imported successfully."),k=e.AutoTokenizer,y=e.AutoProcessor,w=e.WhisperForConditionalGeneration,P=e.TextStreamer,v=e.full,g=e.env,g.allowLocalModels=!1,g.backends.onnx.logLevel="info"}catch(e){throw console.error("[Worker] Failed to import Transformers library:",e),e}}var L=128,t=class{static async getInstance(o){if(k||await A(),this.model_id="onnx-community/whisper-base",!this.modelPromise){let s=[k.from_pretrained(this.model_id,{progress_callback:o}),y.from_pretrained(this.model_id,{progress_callback:o}),w.from_pretrained(this.model_id,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:o})];this.modelPromise=Promise.all(s).then(async a=>{this.tokenizer=a[0],this.processor=a[1],this.model=a[2];try{await this.model.generate({input_features:v([1,80,3e3],0),max_new_tokens:1})}catch(n){return console.warn("[Worker] Model warmup failed:",n),Promise.resolve()}return Promise.resolve()}).then(()=>{if(!this.tokenizer||!this.processor||!this.model)throw new Error("[Worker] Model components not initialized correctly after load.");return[this.tokenizer,this.processor,this.model]}).catch(a=>{throw console.error("[Worker] Model loading failed:",a),this.modelPromise=null,a})}return await this.modelPromise}};i(t,"model_id",null),i(t,"tokenizer",null),i(t,"processor",null),i(t,"model",null),i(t,"modelPromise",null);var p=!1;async function N({audio:e,language:o}){if(p){console.warn("[Worker] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e){console.warn("[Worker] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}p=!0,console.log("[Worker] Transcribing audio..."),self.postMessage({status:"transcribing_start"});try{console.log("[Worker] Getting model instance...");let[r,s,a]=await t.getInstance(c=>{console.log("[Worker] AutomaticSpeechRecognitionPipeline Progress callback:",c)});console.log("[Worker] Model instance retrieved.");let n=null,l=0,d="",M=c=>{n!=null||(n=performance.now()),d=c;let u=0;l++>0&&n&&(u=l/(performance.now()-n)*1e3);let F={status:"update",output:d,tps:u?parseFloat(u.toFixed(1)):0,numTokens:l};self.postMessage(F)};console.log("[Worker] Creating text streamer...");let _=new P(r,{skip_prompt:!0,skip_special_tokens:!0,callback_function:M});console.log("[Worker] Text streamer created.");let z=await s(e);console.log("[Worker] Processor inputs created."),await a.generate(h(W({},z),{max_new_tokens:L,language:o,streamer:_})),console.log("[Worker] Model generate completed.");let f={status:"complete",output:d};console.log("[Worker] Sending complete message.",f),self.postMessage(f)}catch(r){console.error("[Worker] Transcription failed:",r),self.postMessage({status:"error",data:\`Transcription failed: \${Error.isError(r)?r.message:"unknown error"}\`})}finally{p=!1}}console.log("[Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Worker] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Worker] Received invalid message format:",e.data);return}let{type:o,data:r}=e.data;switch(o){case"load":console.log("[Worker] Handling 'load' message.");try{console.log("[Worker] Attempting to get/load model instance..."),await t.getInstance(s=>{s.status==="progress"?self.postMessage({status:"loading",data:\`Loading model: \${s.progress.toFixed(0)}%\`}):(s.status==="done"||s.status==="ready")&&self.postMessage({status:"ready"})}),console.log("[Worker] Model instance loaded/retrieved successfully.")}catch(s){console.error("[Worker] Error during model loading on 'load' message:",s)}break;case"generate":r?(console.log("[Worker] Received 'generate' message with data:",r),await N(r)):console.warn("[Worker] 'generate' message received without data.");break;default:console.warn("[Worker] Received unknown message type:",o);break}});console.log("[Worker] Message listener set up. Initial script execution complete.");
-//# sourceMappingURL=worker_9sNIU.ts.map
+  // inline-worker:/var/folders/wt/r3jjdtb90sl84637qrrd32s00000gn/T/epiw-mIDX4Z/worker_XRNhi.ts
+  var worker_XRNhi_default = `var F=Object.defineProperty,x=Object.defineProperties;var C=Object.getOwnPropertyDescriptors;var T=Object.getOwnPropertySymbols;var G=Object.prototype.hasOwnProperty,E=Object.prototype.propertyIsEnumerable;var m=(e,o,r)=>o in e?F(e,o,{enumerable:!0,configurable:!0,writable:!0,value:r}):e[o]=r,W=(e,o)=>{for(var r in o||(o={}))G.call(o,r)&&m(e,r,o[r]);if(T)for(var r of T(o))E.call(o,r)&&m(e,r,o[r]);return e},h=(e,o)=>x(e,C(o));var i=(e,o,r)=>m(e,typeof o!="symbol"?o+"":o,r);console.log("[Worker] Code execution started.");var d=!1,f,y,w,P,v,p;async function A(){console.log("[Worker] Initializing Transformers library...");try{let e=await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.0");console.log("[Worker] Transformers library imported successfully."),f=e.AutoTokenizer,y=e.AutoProcessor,w=e.WhisperForConditionalGeneration,P=e.TextStreamer,v=e.full,p=e.env,p.allowLocalModels=!1,p.backends.onnx.logLevel="info"}catch(e){throw console.error("[Worker] Failed to import Transformers library:",e),e}}var L=128,t=class{static async getInstance(o){if(f||await A(),this.model_id="onnx-community/whisper-base",!this.modelPromise){let s=[f.from_pretrained(this.model_id,{progress_callback:o}),y.from_pretrained(this.model_id,{progress_callback:o}),w.from_pretrained(this.model_id,{dtype:{encoder_model:"fp32",decoder_model_merged:"q4"},device:"webgpu",progress_callback:o})];this.modelPromise=Promise.all(s).then(async a=>{this.tokenizer=a[0],this.processor=a[1],this.model=a[2];try{await this.model.generate({input_features:v([1,80,3e3],0),max_new_tokens:1})}catch(n){return console.warn("[Worker] Model warmup failed:",n),Promise.resolve()}return Promise.resolve()}).then(()=>{if(!this.tokenizer||!this.processor||!this.model)throw new Error("[Worker] Model components not initialized correctly after load.");return[this.tokenizer,this.processor,this.model]}).catch(a=>{throw console.error("[Worker] Model loading failed:",a),this.modelPromise=null,a})}return await this.modelPromise}};i(t,"model_id",null),i(t,"tokenizer",null),i(t,"processor",null),i(t,"model",null),i(t,"modelPromise",null);var k=!1;async function R({audio:e,language:o}){if(k){console.warn("[Worker] Already processing audio."),self.postMessage({status:"error",data:"Already processing audio."});return}if(!e){console.warn("[Worker] No audio data received."),self.postMessage({status:"error",data:"No audio data received."});return}k=!0,d=!1,console.log("[Worker] Transcribing audio..."),self.postMessage({status:"transcribing_start"});try{console.log("[Worker] Getting model instance...");let[r,s,a]=await t.getInstance(l=>{console.log("[Worker] AutomaticSpeechRecognitionPipeline Progress callback:",l)});console.log("[Worker] Model instance retrieved.");let n=null,c=0,u="",M=l=>{if(d){console.log("[Worker] Streamer callback cancelled.");return}n!=null||(n=performance.now()),u=l;let g=0;c++>0&&n&&(g=c/(performance.now()-n)*1e3);let b={status:"update",output:u,tps:g?parseFloat(g.toFixed(1)):0,numTokens:c};self.postMessage(b)};console.log("[Worker] Creating text streamer...");let _=new P(r,{skip_prompt:!0,skip_special_tokens:!0,callback_function:M});console.log("[Worker] Text streamer created.");let z=await s(e);if(console.log("[Worker] Processor inputs created."),await a.generate(h(W({},z),{max_new_tokens:L,language:o,streamer:_})),console.log("[Worker] Model generate completed."),d)console.log("[Worker] Transcription cancelled post-generation. Discarding result.");else{let l={status:"complete",output:u};console.log("[Worker] Sending complete message.",l),self.postMessage(l)}}catch(r){console.error("[Worker] Transcription failed:",r),self.postMessage({status:"error",data:\`Transcription failed: \${Error.isError(r)?r.message:"unknown error"}\`})}finally{k=!1}}console.log("[Worker] Setting up message listener.");self.addEventListener("message",async e=>{if(console.log("[Worker] Received message:",e.data),!e.data||typeof e.data!="object"||!("type"in e.data)){console.warn("[Worker] Received invalid message format:",e.data);return}let{type:o,data:r}=e.data;switch(o){case"load":console.log("[Worker] Handling 'load' message.");try{console.log("[Worker] Attempting to get/load model instance..."),await t.getInstance(s=>{s.status==="progress"?self.postMessage({status:"loading",data:\`Loading model: \${s.progress.toFixed(0)}%\`}):(s.status==="done"||s.status==="ready")&&self.postMessage({status:"ready"})}),console.log("[Worker] Model instance loaded/retrieved successfully.")}catch(s){console.error("[Worker] Error during model loading on 'load' message:",s)}break;case"generate":r?(console.log("[Worker] Received 'generate' message with data:",r),await R(r)):console.warn("[Worker] 'generate' message received without data.");break;case"stop":console.log("[Worker] Received stop message."),d=!0;break;default:console.warn("[Worker] Received unknown message type:",o);break}});console.log("[Worker] Message listener set up. Initial script execution complete.");
+//# sourceMappingURL=worker_XRNhi.ts.map
 `;
 
   // src/asr/manager.ts
@@ -72,7 +72,7 @@
     console.log("[ASR Manager] Attempting to create worker...");
     dispatchStatusUpdate("loading", "Creating ASR Worker...");
     try {
-      worker = fromScriptText(worker_9sNIU_default, {});
+      worker = fromScriptText(worker_XRNhi_default, {});
       worker.onmessage = (e) => {
         const { status, data, ...rest } = e.data;
         console.log("[ASR Manager] Received message from worker:", e.data);
@@ -154,6 +154,17 @@
   }
   function getWorkerError() {
     return workerError;
+  }
+  function stopWorkerTranscription() {
+    if (worker && workerReady) {
+      console.log("[ASR Manager] Sending stop message to worker.");
+      const stopMessage = { type: "stop" };
+      worker.postMessage(stopMessage);
+    } else {
+      console.warn(
+        "[ASR Manager] Cannot send stop message: Worker not ready or doesn't exist."
+      );
+    }
   }
   function initializeASRSystem(transformersLibLoaded) {
     console.log(
@@ -253,7 +264,7 @@
       const s = document.createElement("style");
       s.id = styleId;
       s.textContent = `
-      .sv-wrap { width: 0; height: 24px; opacity: 0; overflow: hidden; transition: width 0.3s ease, opacity 0.3s ease; margin-right: 2px; background: rgba(200,200,200,0.08); border-radius: 4px; vertical-align: middle; display: inline-block; }
+      .sv-wrap { width: 0; height: 24px; opacity: 0; overflow: hidden; transition: width 0.3s ease, opacity 0.3s ease; margin-right: 2px; /*background: rgba(200,200,200,0.08);*/ border-radius: 4px; vertical-align: middle; display: inline-block; position: relative; mask-image: linear-gradient(to right, transparent 0, black 10px, black calc(100% - 10px), transparent 100%); }
       .mic-btn { cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; position: relative; color: #888; }
       .mic-btn:hover { background: rgba(0,0,0,0.05); color: #555; }
       .mic-btn.active { color: #e66; background: rgba(255, 100, 100, 0.1); }
@@ -266,8 +277,18 @@
       .mic-btn .status-tooltip { visibility: hidden; width: 120px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 0; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.3s; font-size: 10px; }
       .mic-btn .status-tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
       .mic-btn:hover .status-tooltip, .mic-btn.disabled .status-tooltip { visibility: visible; opacity: 1; }
+      /* Styles for the cancel button - mimicking mic-btn but red */
+      .sv-cancel-btn { cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; color: #e66; margin-right: 2px; }
+      .sv-cancel-btn:hover { background: rgba(255, 100, 100, 0.1); color: #c33; /* Darker red on hover */ }
     `;
       document.head.appendChild(s);
+    }
+    if (!document.getElementById("codicon-stylesheet")) {
+      const link = document.createElement("link");
+      link.id = "codicon-stylesheet";
+      link.rel = "stylesheet";
+      link.href = "https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css";
+      document.head.appendChild(link);
     }
   }
   function updateMicButtonState(button, newState, message = "") {
@@ -305,9 +326,22 @@
         break;
       case "transcribing":
         button.classList.add("transcribing");
+        const transcribeControlContainer = document.createElement("div");
+        transcribeControlContainer.style.display = "inline-flex";
+        transcribeControlContainer.style.alignItems = "center";
+        transcribeControlContainer.style.justifyContent = "center";
+        transcribeControlContainer.style.gap = "4px";
         const spinnerT = document.createElement("div");
         spinnerT.className = "mic-spinner";
-        button.appendChild(spinnerT);
+        transcribeControlContainer.appendChild(spinnerT);
+        const stopBtn = document.createElement("span");
+        stopBtn.className = "codicon codicon-x stop-transcription-btn";
+        stopBtn.style.color = "#e66";
+        stopBtn.style.cursor = "pointer";
+        stopBtn.style.fontSize = "10px";
+        stopBtn.setAttribute("title", "Stop Transcription");
+        transcribeControlContainer.appendChild(stopBtn);
+        button.appendChild(transcribeControlContainer);
         defaultTitle = "Transcribing...";
         iconClass = "";
         break;
@@ -363,6 +397,13 @@
     canvas.width = 120;
     canvas.height = 24;
     wrap.appendChild(canvas);
+    const cancelBtn = document.createElement("div");
+    cancelBtn.className = "sv-cancel-btn";
+    cancelBtn.setAttribute("title", "Cancel and discard recording");
+    cancelBtn.style.display = "none";
+    const cancelIcon = document.createElement("span");
+    cancelIcon.className = "codicon codicon-trash !text-[12px]";
+    cancelBtn.appendChild(cancelIcon);
     const mic = document.createElement("div");
     mic.className = "mic-btn";
     mic.dataset.asrInit = "1";
@@ -373,6 +414,7 @@
     mic.appendChild(statusTooltip);
     area.prepend(mic);
     area.prepend(wrap);
+    area.prepend(cancelBtn);
     const ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
     const BAR_WIDTH = 2, BAR_GAP = 1, STEP = BAR_WIDTH + BAR_GAP;
@@ -458,6 +500,7 @@
       stream = null;
       audioCtx?.close().catch((e) => console.warn("Error closing AudioContext:", e));
       audioCtx = null;
+      cancelBtn.style.display = "none";
       if (forceStop && !isCancelled) {
         updateMicButtonState(mic, "idle", "Recording stopped forcefully");
       }
@@ -492,6 +535,7 @@
         wrap.style.width = `${SLOTS * STEP}px`;
         wrap.style.opacity = "1";
         raf = requestAnimationFrame(draw);
+        cancelBtn.style.display = "inline-flex";
         try {
           const mimeTypes = [
             "audio/webm;codecs=opus",
@@ -517,6 +561,7 @@
           };
           mediaRecorder.onstop = async () => {
             console.log("Recording stopped, processing...");
+            cancelBtn.style.display = "none";
             if (isCancelled) {
               updateMicButtonState(mic, "idle", "Recording cancelled");
               return;
@@ -601,6 +646,24 @@
       if (chatInputContentEditable2) {
         setCurrentAsrInstance({ mic, chatInputContentEditable: chatInputContentEditable2 });
       }
+      if (e.target?.classList.contains("stop-transcription-btn")) {
+        e.stopPropagation();
+        console.log("Stop transcription requested.");
+        stopWorkerTranscription();
+        updateMicButtonState(mic, "idle", "Transcription stopped");
+      }
+    });
+    cancelBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isCancelled = true;
+      stopRecording(true);
+      updateMicButtonState(mic, "idle", "Recording cancelled");
+      audioChunks = [];
+      amps.fill(MIN_H);
+      alphas.fill(1);
+      offset = 0;
+      if (ctx) ctx.clearRect(0, 0, W, H);
     });
   }
   function setupMicButtonObserver() {

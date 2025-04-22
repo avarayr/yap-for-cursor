@@ -14,6 +14,8 @@ import type { WorkerMessage, WorkerResponse } from "./../types";
 console.log("[Worker] Code execution started.");
 // This code runs in a separate worker thread.
 
+let cancelRequested = false; // Restore global flag
+
 // declare self.postMessage
 declare const self: {
   postMessage: (message: WorkerResponse) => void;
@@ -129,6 +131,7 @@ class AutomaticSpeechRecognitionPipeline {
     return result;
   }
 }
+
 let processing = false;
 async function generate({ audio, language }: GenerateParams) {
   if (processing) {
@@ -148,6 +151,8 @@ async function generate({ audio, language }: GenerateParams) {
     return;
   }
   processing = true;
+  cancelRequested = false; // Reset flag for this run
+
   console.log("[Worker] Transcribing audio...");
   self.postMessage({ status: "transcribing_start" });
   try {
@@ -165,6 +170,11 @@ async function generate({ audio, language }: GenerateParams) {
     let numTokens = 0;
     let fullOutput = "";
     const callback_function = (output: string) => {
+      // Check flag inside the streamer callback
+      if (cancelRequested) {
+        console.log("[Worker] Streamer callback cancelled.");
+        return; // Prevent further updates from streamer
+      }
       startTime ??= performance.now();
       fullOutput = output;
       let tps = 0;
@@ -188,19 +198,31 @@ async function generate({ audio, language }: GenerateParams) {
     console.log("[Worker] Text streamer created.");
     const inputs = await processor(audio);
     console.log("[Worker] Processor inputs created.");
+
     await model.generate({
       ...inputs,
-      max_new_tokens: MAX_NEW_TOKENS,
-      language: language,
+      max_new_tokens: MAX_NEW_TOKENS, // Put back directly
+      language: language, // Put back directly
       streamer,
     });
-    console.log("[Worker] Model generate completed.");
-    const completeMessage: WorkerResponse = {
-      status: "complete",
-      output: fullOutput,
-    };
-    console.log("[Worker] Sending complete message.", completeMessage);
-    self.postMessage(completeMessage);
+    console.log("[Worker] Model generate completed."); // Revert log message too
+
+    // TRACK THIS ISSUE TO IMPLEMENT ABORTSIGNAL - https://github.com/huggingface/transformers.js/pull/1193
+
+    // Check if cancellation was requested before sending the final result (Keep this check)
+    if (cancelRequested) {
+      console.log(
+        "[Worker] Transcription cancelled post-generation. Discarding result."
+      );
+      // Resetting flags is handled in finally
+    } else {
+      const completeMessage: WorkerResponse = {
+        status: "complete",
+        output: fullOutput,
+      };
+      console.log("[Worker] Sending complete message.", completeMessage);
+      self.postMessage(completeMessage);
+    }
   } catch (error: unknown) {
     console.error("[Worker] Transcription failed:", error);
 
@@ -255,6 +277,10 @@ self.addEventListener("message", async (e: MessageEvent) => {
       } else {
         console.warn("[Worker] 'generate' message received without data.");
       }
+      break;
+    case "stop":
+      console.log("[Worker] Received stop message.");
+      cancelRequested = true; // Set the global flag
       break;
     default:
       console.warn("[Worker] Received unknown message type:", type);

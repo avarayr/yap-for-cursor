@@ -4,6 +4,7 @@ import {
   getOrCreateWorker,
   getWorkerError,
   isWorkerReady,
+  stopWorkerTranscription,
 } from "../asr/manager";
 import { processAudioBlob } from "../audio/processing";
 import * as CONFIG from "../config";
@@ -17,9 +18,8 @@ function injectGlobalStyles(): void {
   if (!document.getElementById(styleId)) {
     const s = document.createElement("style");
     s.id = styleId;
-    // Keep styles collapsed for brevity, ensure all necessary styles are included
     s.textContent = `
-      .sv-wrap { width: 0; height: 24px; opacity: 0; overflow: hidden; transition: width 0.3s ease, opacity 0.3s ease; margin-right: 2px; background: rgba(200,200,200,0.08); border-radius: 4px; vertical-align: middle; display: inline-block; }
+      .sv-wrap { width: 0; height: 24px; opacity: 0; overflow: hidden; transition: width 0.3s ease, opacity 0.3s ease; margin-right: 2px; /*background: rgba(200,200,200,0.08);*/ border-radius: 4px; vertical-align: middle; display: inline-block; position: relative; mask-image: linear-gradient(to right, transparent 0, black 10px, black calc(100% - 10px), transparent 100%); }
       .mic-btn { cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; position: relative; color: #888; }
       .mic-btn:hover { background: rgba(0,0,0,0.05); color: #555; }
       .mic-btn.active { color: #e66; background: rgba(255, 100, 100, 0.1); }
@@ -32,8 +32,20 @@ function injectGlobalStyles(): void {
       .mic-btn .status-tooltip { visibility: hidden; width: 120px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 0; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.3s; font-size: 10px; }
       .mic-btn .status-tooltip::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #555 transparent transparent transparent; }
       .mic-btn:hover .status-tooltip, .mic-btn.disabled .status-tooltip { visibility: visible; opacity: 1; }
+      /* Styles for the cancel button - mimicking mic-btn but red */
+      .sv-cancel-btn { cursor: pointer; padding: 4px; border-radius: 50%; transition: background 0.2s, color 0.2s; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; color: #e66; margin-right: 2px; }
+      .sv-cancel-btn:hover { background: rgba(255, 100, 100, 0.1); color: #c33; /* Darker red on hover */ }
     `;
     document.head.appendChild(s);
+  }
+  // Inject codicon stylesheet if not present
+  if (!document.getElementById("codicon-stylesheet")) {
+    const link = document.createElement("link");
+    link.id = "codicon-stylesheet";
+    link.rel = "stylesheet";
+    link.href =
+      "https://cdn.jsdelivr.net/npm/@vscode/codicons/dist/codicon.css";
+    document.head.appendChild(link);
   }
 }
 
@@ -83,11 +95,29 @@ export function updateMicButtonState(
       break;
     case "transcribing":
       button.classList.add("transcribing");
+      // Container for spinner and stop button
+      const transcribeControlContainer = document.createElement("div");
+      transcribeControlContainer.style.display = "inline-flex";
+      transcribeControlContainer.style.alignItems = "center";
+      transcribeControlContainer.style.justifyContent = "center";
+      transcribeControlContainer.style.gap = "4px"; // Space between spinner and stop button
+
       const spinnerT = document.createElement("div");
       spinnerT.className = "mic-spinner";
-      button.appendChild(spinnerT);
+      transcribeControlContainer.appendChild(spinnerT);
+
+      // Add Stop button (X icon)
+      const stopBtn = document.createElement("span");
+      stopBtn.className = "codicon codicon-x stop-transcription-btn"; // Added stop-transcription-btn class
+      stopBtn.style.color = "#e66"; // Red color for stop
+      stopBtn.style.cursor = "pointer";
+      stopBtn.style.fontSize = "10px"; // Smaller icon
+      stopBtn.setAttribute("title", "Stop Transcription");
+      transcribeControlContainer.appendChild(stopBtn);
+
+      button.appendChild(transcribeControlContainer);
       defaultTitle = "Transcribing...";
-      iconClass = "";
+      iconClass = ""; // No main icon when spinner/stop are shown
       break;
     case "disabled":
       button.classList.add("disabled");
@@ -148,10 +178,21 @@ export function initWave(box: HTMLElement): void {
   const wrap = document.createElement("div");
   wrap.className = "sv-wrap";
   wrap.style.opacity = "0";
+
   const canvas = document.createElement("canvas");
   canvas.width = 120;
   canvas.height = 24;
   wrap.appendChild(canvas);
+
+  // --- Add cancel button (trash icon) ---
+  const cancelBtn = document.createElement("div"); // Use div for easier styling
+  cancelBtn.className = "sv-cancel-btn";
+  cancelBtn.setAttribute("title", "Cancel and discard recording");
+  cancelBtn.style.display = "none"; // Only show when recording
+  const cancelIcon = document.createElement("span");
+  cancelIcon.className = "codicon codicon-trash !text-[12px]";
+  cancelBtn.appendChild(cancelIcon);
+  // ---
 
   const mic = document.createElement("div") as MicButtonElement;
   mic.className = "mic-btn";
@@ -163,8 +204,10 @@ export function initWave(box: HTMLElement): void {
   statusTooltip.className = "status-tooltip";
   mic.appendChild(statusTooltip);
 
+  // Prepend in order: cancel, wrap, mic
   area.prepend(mic);
   area.prepend(wrap);
+  area.prepend(cancelBtn);
 
   // Visualization params
   const ctx = canvas.getContext("2d");
@@ -276,6 +319,8 @@ export function initWave(box: HTMLElement): void {
       .catch((e) => console.warn("Error closing AudioContext:", e));
     audioCtx = null;
 
+    cancelBtn.style.display = "none"; // Hide cancel when not recording
+
     if (forceStop && !isCancelled) {
       updateMicButtonState(mic, "idle", "Recording stopped forcefully");
     }
@@ -316,6 +361,8 @@ export function initWave(box: HTMLElement): void {
         wrap.style.opacity = "1";
         raf = requestAnimationFrame(draw);
 
+        cancelBtn.style.display = "inline-flex"; // Show cancel when recording
+
         try {
           const mimeTypes = [
             "audio/webm;codecs=opus",
@@ -343,6 +390,7 @@ export function initWave(box: HTMLElement): void {
 
           mediaRecorder.onstop = async () => {
             console.log("Recording stopped, processing...");
+            cancelBtn.style.display = "none"; // Hide cancel when done
             if (isCancelled) {
               updateMicButtonState(mic, "idle", "Recording cancelled");
               return;
@@ -397,7 +445,7 @@ export function initWave(box: HTMLElement): void {
       .catch((err: Error) => {
         console.error("Mic access denied or getUserMedia failed:", err);
         updateMicButtonState(mic, "idle", "Mic access denied");
-        stopRecording(true);
+        stopRecording(true); // Ensure cancel button is hidden on error too
       });
   }
 
@@ -437,6 +485,31 @@ export function initWave(box: HTMLElement): void {
     if (chatInputContentEditable) {
       setCurrentAsrInstance({ mic, chatInputContentEditable });
     }
+    if (
+      (e.target as HTMLElement)?.classList.contains("stop-transcription-btn")
+    ) {
+      e.stopPropagation(); // Prevent other mic click handlers
+      console.log("Stop transcription requested.");
+      stopWorkerTranscription(); // Tell the worker to stop/discard
+      updateMicButtonState(mic, "idle", "Transcription stopped");
+      // Optionally clear the ASR target instance if needed
+      // clearCurrentAsrInstanceTarget(); // Example if you have such a function
+    }
+  });
+
+  // --- Cancel button event ---
+  cancelBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isCancelled = true;
+    stopRecording(true); // Call stopRecording with force=true
+    updateMicButtonState(mic, "idle", "Recording cancelled");
+    // Clear all memory/state
+    audioChunks = [];
+    amps.fill(MIN_H);
+    alphas.fill(1);
+    offset = 0;
+    if (ctx) ctx.clearRect(0, 0, W, H);
   });
 }
 

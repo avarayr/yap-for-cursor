@@ -191,6 +191,21 @@ export function getWorkerError(): string | null {
 }
 
 /**
+ * Sends a message to the worker to stop the current transcription.
+ */
+export function stopWorkerTranscription(): void {
+  if (worker && workerReady) {
+    console.log("[ASR Manager] Sending stop message to worker.");
+    const stopMessage: WorkerMessage = { type: "stop" };
+    worker.postMessage(stopMessage);
+  } else {
+    console.warn(
+      "[ASR Manager] Cannot send stop message: Worker not ready or doesn't exist."
+    );
+  }
+}
+
+/**
  * Initializes the ASR worker if conditions are met (WebGPU support).
  * Listens for the transformers library to be loaded if necessary.
  */

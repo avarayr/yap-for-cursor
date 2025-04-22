@@ -82,9 +82,16 @@ This project injects custom JavaScript into Cursor via the `Custom CSS and JS Lo
 
 ## Hotkeys:
 
-- `Cmd+Shift+Y` to toggle the transcription.
+- `Cmd+Shift+Y` to toggle the transcription. (work in progress)
 
-(work in progress)
+## Language Support
+
+Right click the microphone
+
+<img width="217" alt="image" src="https://github.com/user-attachments/assets/5b0a05b4-a119-4a41-b647-76d40ab7aff4" />
+
+
+
 
 ---
 

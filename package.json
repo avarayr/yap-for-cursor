@@ -1,0 +1,23 @@
+{
+  "name": "cursor-voice",
+  "module": "src/main.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "nodemon --exec bun build.ts"
+  },
+  "devDependencies": {
+    "@aidenlx/esbuild-plugin-inline-worker": "^1.0.1",
+    "@types/bun": "latest",
+    "@types/web": "^0.0.222",
+    "esbuild": "^0.25.2",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "3.5.0",
+    "nodemon": "^3.1.9"
+  }
+}

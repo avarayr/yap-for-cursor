@@ -6,7 +6,7 @@ await build({
   entryPoints: ["src/main.ts"],
   bundle: true,
   minify: false,
-  sourcemap: true,
+  sourcemap: false,
   plugins: [
     inlineImportPlugin(),
     inlineWorkerPlugin({
@@ -18,7 +18,7 @@ await build({
       },
     }),
   ],
-  outfile: "dist/main.user.js",
+  outfile: "dist/yap-for-cursor.js",
   format: "iife",
   target: "esnext",
 });
